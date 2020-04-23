@@ -1,0 +1,19 @@
+[package]
+name = "dsp"
+version = "0.1.0"
+authors = ["Donghyeok Tak <tdh8316@naver.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rustpython-bytecode = { path = "bytecode", version = "0.1.1" }
+rustpython-compiler = {path = "compiler", version = "0.1.1"}
+rustpython-parser = {path = "parser", version = "0.1.1"}
+
+num-bigint = "0.2"
+num-traits = "0.2"
+clap = { git = "https://github.com/clap-rs/clap", tag = "v2.33.0" }
+either = "1.5.3"
+inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm10-0" }
+num-complex = { version = "0.2", features = ["serde"] }

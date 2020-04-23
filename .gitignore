@@ -1,0 +1,14 @@
+### Intellij ###
+/.idea/
+
+### Rust ###
+/target/
+**/*.rs.bk
+
+### DSP and compiler outputs ###
+*.o
+*.d
+*.eep
+*.elf
+*.hex
+core.a
