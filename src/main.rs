@@ -97,21 +97,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     let linker = if cfg!(debug_assertions) {
-        "scripts/linker.py"
+        "python scripts/linker.py"
     } else {
-        "bin/linker.exe"
+        "bin/linker"
     };
 
     println!("{}", linker);
 
     let out = if cfg!(target_os = "windows") {
         Command::new("cmd")
-            .args(&["/C", "python", linker, arduino_dir, assembly.as_str()])
+            .args(&["/C", linker, arduino_dir, assembly.as_str()])
             .output()
             .expect("Failed to execute command")
     } else {
         Command::new("sh")
-            .args(&["-c", "python", linker, arduino_dir, assembly.as_str()])
+            .args(&["-c", linker, arduino_dir, assembly.as_str()])
             .output()
             .expect("Failed to execute command")
     };
@@ -119,9 +119,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if command == "flash" {
         let uploader = if cfg!(debug_assertions) {
-            "scripts/flash.py"
+            "python scripts/flash.py"
         } else {
-            "bin/flash.exe"
+            "bin/flash"
         };
         let port = matches
             .subcommand_matches("flash")
@@ -133,7 +133,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             Command::new("cmd")
                 .args(&[
                     "/C",
-                    "python",
                     uploader,
                     arduino_dir,
                     &(assembly.to_owned() + ".hex"),
@@ -145,7 +144,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             Command::new("sh")
                 .args(&[
                     "-c",
-                    "python",
                     uploader,
                     arduino_dir,
                     &(assembly.to_owned() + ".hex"),
