@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::process::Command;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use inkwell::context::Context;
@@ -39,7 +40,9 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
     app.get_matches()
 }
 
-fn build<'a, 'ctx>(source_path: String, emit_llvm: bool) {
+fn build<'a, 'ctx>(source_path: String, emit_llvm: bool) -> String {
+    let target_path = source_path.clone() + ".ll";
+
     let context = Context::create();
     let target_data = TargetData::create("e-P1-p:16:8-i8:8-i16:8-i32:8-i64:8-f32:8-f64:8-n8-a:8");
     let module = context.create_module(&source_path.as_str());
@@ -64,8 +67,12 @@ fn build<'a, 'ctx>(source_path: String, emit_llvm: bool) {
         c.module.print_to_stderr();
     } else {
         c.module
-            .print_to_file(source_path + ".ll")
+            .print_to_file(target_path.clone())
             .expect("Couldn't write file");
+    }
+
+    {
+        target_path
     }
 }
 
@@ -76,19 +83,78 @@ fn main() -> Result<(), Box<dyn Error>> {
     let emit_llvm = matches.is_present("emit-llvm");
     let command = matches.subcommand_name().unwrap();
 
-    if command == "build" {
-        build(
-            matches
-                .subcommand()
-                .1
-                .unwrap()
-                .value_of("source")
-                .unwrap()
-                .to_string(),
-            emit_llvm,
-        );
-    } else if command == "flash" {
-        panic!("NotImplemented")
+    let arduino_dir = "D:/arduino-1.8.12/";
+
+    let assembly = build(
+        matches
+            .subcommand()
+            .1
+            .unwrap()
+            .value_of("source")
+            .unwrap()
+            .to_string(),
+        emit_llvm,
+    );
+
+    let linker = if cfg!(debug_assertions) {
+        "scripts/linker.py"
+    } else {
+        "bin/linker.exe"
+    };
+
+    println!("{}", linker);
+
+    let out = if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .args(&["/C", "python", linker, arduino_dir, assembly.as_str()])
+            .output()
+            .expect("Failed to execute command")
+    } else {
+        Command::new("sh")
+            .args(&["-c", "python", linker, arduino_dir, assembly.as_str()])
+            .output()
+            .expect("Failed to execute command")
+    };
+    println!("{}", String::from_utf8_lossy(&out.stderr));
+
+    if command == "flash" {
+        let uploader = if cfg!(debug_assertions) {
+            "scripts/flash.py"
+        } else {
+            "bin/flash.exe"
+        };
+        let port = matches
+            .subcommand_matches("flash")
+            .unwrap()
+            .value_of("port")
+            .expect("No port provided!");
+        println!("{} << {}", uploader, port);
+        let out = if cfg!(target_os = "windows") {
+            Command::new("cmd")
+                .args(&[
+                    "/C",
+                    "python",
+                    uploader,
+                    arduino_dir,
+                    &(assembly.to_owned() + ".hex"),
+                    port,
+                ])
+                .output()
+                .expect("Failed to execute command")
+        } else {
+            Command::new("sh")
+                .args(&[
+                    "-c",
+                    "python",
+                    uploader,
+                    arduino_dir,
+                    &(assembly.to_owned() + ".hex"),
+                    port,
+                ])
+                .output()
+                .expect("Failed to execute command")
+        };
+        println!("{}", String::from_utf8_lossy(&out.stderr))
     }
 
     Ok(())

@@ -40,7 +40,21 @@ pub struct Compiler<'a, 'ctx> {
     variables: HashMap<String, (ValueType, PointerValue<'ctx>)>,
     fn_value_opt: Option<FunctionValue<'ctx>>,
 }
-
+fn truncate_bigint_to_u32(a: &BigInt) -> u32 {
+    fn truncate_biguint_to_u32(a: &BigUint) -> u32 {
+        use std::u32;
+        let mask = BigUint::from(u32::MAX);
+        (a & mask.borrow()).to_u32().unwrap()
+    }
+    let was_negative = a.is_negative();
+    let abs = a.abs().to_biguint().unwrap();
+    let truncated = truncate_biguint_to_u32(&abs);
+    if was_negative {
+        truncated.wrapping_neg()
+    } else {
+        truncated
+    }
+}
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
     pub fn new(
         source_path: String,
@@ -167,6 +181,18 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     ),
                 });
             }
+            ImportFrom {
+                level,
+                module,
+                names,
+            } => {
+                let target = module.as_ref().expect("Unknown module name");
+                if target.clone() == String::from("uno") {
+                    // Do nothing
+                } else {
+                    panic!("Import is not implemented");
+                }
+            }
             Pass => {}
             _ => panic!(
                 "{:?}\nNotImplemented statement {:?}",
@@ -225,21 +251,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         match &expr.node {
             Number { value } => match value {
                 ast::Number::Integer { value } => {
-                    fn truncate_bigint_to_u32(a: &BigInt) -> u32 {
-                        fn truncate_biguint_to_u32(a: &BigUint) -> u32 {
-                            use std::u32;
-                            let mask = BigUint::from(u32::MAX);
-                            (a & mask.borrow()).to_u32().unwrap()
-                        }
-                        let was_negative = a.is_negative();
-                        let abs = a.abs().to_biguint().unwrap();
-                        let truncated = truncate_biguint_to_u32(&abs);
-                        if was_negative {
-                            truncated.wrapping_neg()
-                        } else {
-                            truncated
-                        }
-                    }
                     let n = truncate_bigint_to_u32(value) as u64;
                     Value::I16 {
                         value: self
@@ -296,14 +307,39 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
         func_name = match func_name {
             "pin_mode" => "pinMode",
+            "digital_write" => "digitalWrite",
             _ => func_name,
         };
 
-        let func = self
-            .get_function(func_name)
-            .expect(format!("Undefined function call {}", func_name).as_str());
+        let func = self.get_function(func_name).expect(
+            format!(
+                "{:?}\nFunction '{}' is not defined",
+                self.current_source_location, func_name
+            )
+            .as_str(),
+        );
 
-        let res = self.builder.build_call(func, &[], "call");
+        let mut args_value: Vec<BasicValueEnum> = vec![];
+
+        for expr in args.iter() {
+            // TODO: Currently only convert to i8. Match arguments' types
+            let value = match self.compile_expr(expr) {
+                Value::I16 { value } => value,
+                _ => panic!("NotImplemented function call argument"),
+            };
+            /* self.builder.build_int_truncate(
+                self.context.i8_type().const_int(vv, false),
+                self.context.i8_type(),
+                "cast -> i8",
+            );*/
+            let cast = self
+                .builder
+                .build_int_truncate(value, self.context.i8_type(), "i8");
+            args_value.push(BasicValueEnum::IntValue(cast))
+        }
+
+        let res = self.builder.build_call(func, args_value.as_slice(), "call");
+        res.set_tail_call(true);
 
         match res.try_as_basic_value() {
             Either::Left(bv) => Value::from_basic_value(ValueType::Void, bv),
@@ -314,6 +350,14 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     pub fn generate_prototypes(&mut self) {
         self.module.add_function(
             "pinMode",
+            self.context.void_type().fn_type(
+                &[self.context.i8_type().into(), self.context.i8_type().into()],
+                false,
+            ),
+            None,
+        );
+        self.module.add_function(
+            "digitalWrite",
             self.context.void_type().fn_type(
                 &[self.context.i8_type().into(), self.context.i8_type().into()],
                 false,
