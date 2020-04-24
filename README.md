@@ -11,6 +11,7 @@ The [micropython](https://github.com/micropython/micropython) project aims to pu
 This project was started to use Pythonic programming language for Arduino.
 
 ```python
+# Turns on the built-in LED of Arduino Uno!
 from uno import *
 
 def setup() -> None:
@@ -31,8 +32,24 @@ cargo run flash tests\LED\test.py --port SERIAL_PORT
 ```
 
 ## Usage
-Currently, it emits LLVM assembly, but will soon implement the build procedure.
-To learn how to build and flash generated assembly, go to the scripts directory.
+```
+Damn Small Python is a Python compiler for Arduino
+
+USAGE:
+    dsp [build|flash] source
+
+FLAGS:
+        --emit-llvm
+    -h, --help         Prints help information
+    -V, --version      Prints version information
+
+SUBCOMMANDS:
+    build    Build
+    flash    Flash
+    help     Prints this message or the help of the given subcommand(s)
+
+
+```
 ## compile
 ## upload
 
