@@ -1,6 +1,9 @@
 ### Intellij ###
 /.idea/
 
+### VSCode ###
+/.vscode
+
 ### Rust ###
 /target/
 **/*.rs.bk
@@ -12,3 +15,6 @@
 *.elf
 *.hex
 core.a
+
+### Arduino core ###
+/include/extra/

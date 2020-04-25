@@ -301,7 +301,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         let mut func_name = match &func.node {
             ast::ExpressionType::Identifier { name } => name,
             _ => {
-                panic!("{:?}\nUnknown function name", self.current_source_location);
+                panic!("{:?}\nUnknown function name {:?}", self.current_source_location, func.node);
             }
         }
         .as_str();
@@ -309,6 +309,8 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         func_name = match func_name {
             "pin_mode" => "pinMode",
             "digital_write" => "digitalWrite",
+            "print" => "_Z5printi",
+            "begin" => "_Z5begini",
             _ => func_name,
         };
 
@@ -328,7 +330,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             // TODO: Currently only convert to i8. Match arguments' types
             let value = match self.compile_expr(expr) {
                 Value::I16 { value } => value,
-                _ => panic!("NotImplemented function call argument"),
+                _ => panic!("NotImplemented function call argument type"),
             };
             /* self.builder.build_int_truncate(
                 self.context.i8_type().const_int(vv, false),
@@ -355,6 +357,22 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             "pinMode",
             self.context.void_type().fn_type(
                 &[self.context.i8_type().into(), self.context.i8_type().into()],
+                false,
+            ),
+            None,
+        );
+        self.module.add_function(
+            "_Z5begini",
+            self.context.void_type().fn_type(
+                &[self.context.i16_type().into()],
+                false,
+            ),
+            None,
+        );
+        self.module.add_function(
+            "_Z5printi",
+            self.context.void_type().fn_type(
+                &[self.context.i16_type().into()],
                 false,
             ),
             None,

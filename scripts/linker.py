@@ -44,7 +44,6 @@ if not os.path.isdir(OUT_PREFIX):
     except Exception as e:
         raise e
 
-# TODO: Change output directory
 compile_commands = """
 llc -filetype=obj {INPUT} -o {INPUT}.o
 {CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}WInterrupts.c -o {OUT_PREFIX}WInterrupts.c.o
@@ -71,6 +70,7 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}HardwareSerial2.cpp -o {OUT_PREFIX}HardwareSerial2.cpp.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}HardwareSerial1.cpp -o {OUT_PREFIX}HardwareSerial1.cpp.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}abi.cpp -o {OUT_PREFIX}abi.cpp.o
+{CPP} {CPP_FLAGS} {INCLUDE_FILES} {CWD}/include/Serial.cc -o {OUT_PREFIX}Serial.cc.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}WInterrupts.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring_analog.c.o
@@ -95,6 +95,7 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}HardwareSerial2.cpp.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}HardwareSerial1.cpp.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}abi.cpp.o
+{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}Serial.cc.o
 {CC} -w -Os -g -flto -fuse-linker-plugin -Wl,--gc-sections -mmcu={MCU} -o {INPUT}.elf {INPUT}.o {OUT_PREFIX}core.a -lm
 {OBJ_COPY} -O ihex -j .eeprom {OBJ} .eeprom=0 {INPUT}.elf {INPUT}.eep
 {OBJ_COPY} -O ihex -R .eeprom {INPUT}.elf {INPUT}.hex
@@ -112,6 +113,7 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
     OBJ="--set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma",
     INPUT=sys.argv[2],
     OUT_PREFIX=OUT_PREFIX,
+    CWD=os.getcwd(),
 )
 
 for command in compile_commands.splitlines():
