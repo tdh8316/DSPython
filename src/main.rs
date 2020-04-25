@@ -7,6 +7,7 @@ use inkwell::passes::PassManager;
 use inkwell::targets::{TargetData, TargetTriple};
 
 use crate::codegen::compiler::Compiler;
+use std::borrow::Borrow;
 
 mod codegen;
 
@@ -82,7 +83,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let emit_llvm = matches.is_present("emit-llvm");
     let command = matches.subcommand_name().unwrap();
 
-    let arduino_dir = "D:/arduino-1.8.12/";
+    let conf: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string("conf.json").expect("Couldn't load configuration file")
+    ).expect("Couldn't parse configuration");
+
+    let arduino_dir = conf["ARDUINO_DIR"].as_str().clone().unwrap();
 
     let assembly = build(
         matches
@@ -117,7 +122,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     if out.code().unwrap() != 0 {
-        panic!("Failed to compile")
+        panic!("Failed to compile due to error above")
     } else {
         println!("...Done")
     }

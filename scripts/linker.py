@@ -1,10 +1,8 @@
 import os
+import shutil
 import sys
 
 ARDUINO_DIR = sys.argv[1]
-
-if not os.path.isdir(ARDUINO_DIR):
-    raise FileNotFoundError("Please set your arduino software directory correctly.")
 
 CC = "{ARDUINO_DIR}/hardware/tools/avr/bin/avr-gcc".format(ARDUINO_DIR=ARDUINO_DIR)
 CPP = "{ARDUINO_DIR}/hardware/tools/avr/bin/avr-g++".format(ARDUINO_DIR=ARDUINO_DIR)
@@ -13,6 +11,9 @@ OBJ_COPY = "{ARDUINO_DIR}/hardware/tools/avr/bin/avr-objcopy".format(
     ARDUINO_DIR=ARDUINO_DIR
 )
 AVRDUDE = "{0}/hardware/tools/avr/bin/avrdude".format(ARDUINO_DIR)
+
+if not os.path.isdir(ARDUINO_DIR) or shutil.which(CC):
+    raise FileNotFoundError("Please set your arduino software directory correctly.")
 
 F_CPU = 16000000
 MCU = "atmega328p"
