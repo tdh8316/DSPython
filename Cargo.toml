@@ -17,3 +17,4 @@ clap = { git = "https://github.com/clap-rs/clap", tag = "v2.33.0" }
 either = "1.5.3"
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm10-0" }
 num-complex = { version = "0.2", features = ["serde"] }
+serde_json = "1.0"

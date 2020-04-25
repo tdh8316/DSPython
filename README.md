@@ -29,7 +29,7 @@ def loop() -> None:
  - Python parser is based on [RustPython](https://github.com/RustPython/RustPython).
  - LLVM binding for Rust is [Inkwell](https://github.com/TheDan64/inkwell).
 
-Use below command to run blink example:
+After finishing [configuration](./USAGE.md), use below command to run blink example:
 ```
 cargo run flash tests\Blink\test.py --port SERIAL_PORT
 ```
