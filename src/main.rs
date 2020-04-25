@@ -65,11 +65,10 @@ fn build<'a, 'ctx>(source_path: String, emit_llvm: bool) -> String {
 
     if emit_llvm {
         c.module.print_to_stderr();
-    } else {
-        c.module
-            .print_to_file(target_path.clone())
-            .expect("Couldn't write file");
     }
+    c.module
+        .print_to_file(target_path.clone())
+        .expect("Couldn't write file");
 
     {
         target_path
@@ -95,6 +94,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .to_string(),
         emit_llvm,
     );
+    println!("{}", assembly);
 
     let linker = if cfg!(debug_assertions) {
         "python scripts/linker.py"
