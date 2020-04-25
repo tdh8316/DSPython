@@ -102,20 +102,25 @@ fn main() -> Result<(), Box<dyn Error>> {
         "bin/linker"
     };
 
-    println!("{}", linker);
+    println!("Run command {}...", linker);
 
     let out = if cfg!(target_os = "windows") {
         Command::new("cmd")
             .args(&["/C", linker, arduino_dir, assembly.as_str()])
-            .output()
+            .status()
             .expect("Failed to execute command")
     } else {
         Command::new("sh")
             .args(&["-c", linker, arduino_dir, assembly.as_str()])
-            .output()
+            .status()
             .expect("Failed to execute command")
     };
-    println!("{}", String::from_utf8_lossy(&out.stderr));
+
+    if out.code().unwrap() != 0 {
+        panic!("Failed to compile")
+    } else {
+        println!("...Done")
+    }
 
     if command == "flash" {
         let uploader = if cfg!(debug_assertions) {

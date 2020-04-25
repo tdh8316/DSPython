@@ -11,7 +11,7 @@ The [micropython](https://github.com/micropython/micropython) project aims to pu
 This project was started to use Pythonic programming language for Arduino.
 
 ```python
-# Turns on the built-in LED of Arduino Uno!
+# Blink the built-in LED of Arduino Uno!
 from uno import *
 
 def setup() -> None:
@@ -20,15 +20,18 @@ def setup() -> None:
 
 def loop() -> None:
     digital_write(13, 1)
+    delay(1000)
+    digital_write(13, 0)
+    delay(1000)
     return None
 ```
 
  - Python parser is based on [RustPython](https://github.com/RustPython/RustPython).
  - LLVM binding for Rust is [Inkwell](https://github.com/TheDan64/inkwell).
 
-Use below command to turn on the built-in LED of Arduino Uno:
+Use below command to run blink example:
 ```
-cargo run flash tests\LED\test.py --port SERIAL_PORT
+cargo run flash tests\Blink\test.py --port SERIAL_PORT
 ```
 
 ## Usage

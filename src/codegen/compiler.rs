@@ -18,6 +18,7 @@ use rustpython_parser::ast::{Expression, Operator, Parameters, Suite};
 use crate::codegen::value::*;
 
 use self::either::Either;
+use std::any::Any;
 
 #[derive(Debug, Clone, Copy)]
 struct CompileContext {
@@ -319,9 +320,11 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             .as_str(),
         );
 
+        let args_proto = func.get_params();
+
         let mut args_value: Vec<BasicValueEnum> = vec![];
 
-        for expr in args.iter() {
+        for (expr, proto) in args.iter().zip(args_proto.iter()) {
             // TODO: Currently only convert to i8. Match arguments' types
             let value = match self.compile_expr(expr) {
                 Value::I16 { value } => value,
@@ -334,7 +337,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             );*/
             let cast = self
                 .builder
-                .build_int_truncate(value, self.context.i8_type(), "i8");
+                .build_int_truncate(value, proto.get_type().into_int_type(), "i8");
             args_value.push(BasicValueEnum::IntValue(cast))
         }
 
@@ -352,6 +355,14 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             "pinMode",
             self.context.void_type().fn_type(
                 &[self.context.i8_type().into(), self.context.i8_type().into()],
+                false,
+            ),
+            None,
+        );
+        self.module.add_function(
+            "delay",
+            self.context.void_type().fn_type(
+                &[self.context.i32_type().into()],
                 false,
             ),
             None,

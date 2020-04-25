@@ -52,6 +52,7 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 {CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_digital.c -o {OUT_PREFIX}wiring_digital.c.o
 {CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_pulse.c -o {OUT_PREFIX}wiring_pulse.c.o
 {CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_shift.c -o {OUT_PREFIX}wiring_shift.c.o
+{CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}hooks.c -o {OUT_PREFIX}hooks.c.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}CDC.cpp -o {OUT_PREFIX}CDC.cpp.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}HardwareSerial.cpp -o {OUT_PREFIX}HardwareSerial.cpp.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}IPAddress.cpp -o {OUT_PREFIX}IPAddress.cpp.o
@@ -63,12 +64,19 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}USBCore.cpp -o {OUT_PREFIX}USBCore.cpp.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}WMath.cpp -o {OUT_PREFIX}WMath.cpp.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}WString.cpp -o {OUT_PREFIX}WString.cpp.o
+{CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}PluggableUSB.cpp -o {OUT_PREFIX}PluggableUSB.cpp.o
+{CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}HardwareSerial0.cpp -o {OUT_PREFIX}HardwareSerial0.cpp.o
+{CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}HardwareSerial3.cpp -o {OUT_PREFIX}HardwareSerial3.cpp.o
+{CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}HardwareSerial2.cpp -o {OUT_PREFIX}HardwareSerial2.cpp.o
+{CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}HardwareSerial1.cpp -o {OUT_PREFIX}HardwareSerial1.cpp.o
+{CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}abi.cpp -o {OUT_PREFIX}abi.cpp.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}WInterrupts.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring_analog.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring_digital.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring_pulse.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring_shift.c.o
+{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}hooks.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}CDC.cpp.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}HardwareSerial.cpp.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}IPAddress.cpp.o
@@ -80,7 +88,13 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}USBCore.cpp.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}WMath.cpp.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}WString.cpp.o
-{CC} -Os -Wl,--gc-sections -mmcu={MCU} -o {INPUT}.elf {INPUT}.o {OUT_PREFIX}core.a -lm
+{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}PluggableUSB.cpp.o
+{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}HardwareSerial0.cpp.o
+{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}HardwareSerial3.cpp.o
+{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}HardwareSerial2.cpp.o
+{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}HardwareSerial1.cpp.o
+{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}abi.cpp.o
+{CC} -w -Os -g -flto -fuse-linker-plugin -Wl,--gc-sections -mmcu={MCU} -o {INPUT}.elf {INPUT}.o {OUT_PREFIX}core.a -lm
 {OBJ_COPY} -O ihex -j .eeprom {OBJ} .eeprom=0 {INPUT}.elf {INPUT}.eep
 {OBJ_COPY} -O ihex -R .eeprom {INPUT}.elf {INPUT}.hex
 """.format(
@@ -100,7 +114,9 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 )
 
 for command in compile_commands.splitlines():
-    os.system(command)
+    code: int = os.system(command)
+    if code != 0:
+        sys.exit(1)
 
 os.remove("{INPUT}.elf".format(INPUT=sys.argv[2]))
 os.remove("{INPUT}.eep".format(INPUT=sys.argv[2]))
