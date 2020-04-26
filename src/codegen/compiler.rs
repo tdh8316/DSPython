@@ -309,8 +309,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         func_name = match func_name {
             "pin_mode" => "pinMode",
             "digital_write" => "digitalWrite",
-            "print" => "_Z5printi",
-            "begin" => "_Z5begini",
             _ => func_name,
         };
 
@@ -362,7 +360,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             None,
         );
         self.module.add_function(
-            "_Z5begini",
+            "begin",
             self.context.void_type().fn_type(
                 &[self.context.i16_type().into()],
                 false,
@@ -370,7 +368,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             None,
         );
         self.module.add_function(
-            "_Z5printi",
+            "print",
             self.context.void_type().fn_type(
                 &[self.context.i16_type().into()],
                 false,

@@ -1,4 +1,4 @@
 #include "Serial.h"
 
-void print(int n) { Serial.println(n); }
-void begin(int b) { Serial.begin(b); }
+extern "C" void print(int n) { Serial.println(n); }
+extern "C" void begin(int b) { Serial.begin(b); }
