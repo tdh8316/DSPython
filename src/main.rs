@@ -138,7 +138,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .unwrap()
             .value_of("port")
             .expect("No port provided!");
-        println!("{} << {}", uploader, port);
+        println!("{} << {}...", uploader, port);
         let out = if cfg!(target_os = "windows") {
             Command::new("cmd")
                 .args(&[
@@ -162,7 +162,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .output()
                 .expect("Failed to execute command")
         };
-        println!("{}", String::from_utf8_lossy(&out.stderr))
+        // println!("{}", String::from_utf8_lossy(&out.stderr))
+        println!("...Done")
     }
 
     Ok(())
