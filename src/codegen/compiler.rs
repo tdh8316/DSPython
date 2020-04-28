@@ -1,5 +1,6 @@
 extern crate either;
 
+use std::any::Any;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 
@@ -18,7 +19,6 @@ use rustpython_parser::ast::{Expression, Operator, Parameters, Suite};
 use crate::codegen::value::*;
 
 use self::either::Either;
-use std::any::Any;
 
 #[derive(Debug, Clone, Copy)]
 struct CompileContext {
@@ -41,6 +41,7 @@ pub struct Compiler<'a, 'ctx> {
     variables: HashMap<String, (ValueType, PointerValue<'ctx>)>,
     fn_value_opt: Option<FunctionValue<'ctx>>,
 }
+
 fn truncate_bigint_to_u32(a: &BigInt) -> u32 {
     fn truncate_biguint_to_u32(a: &BigUint) -> u32 {
         use std::u32;
@@ -56,6 +57,7 @@ fn truncate_bigint_to_u32(a: &BigInt) -> u32 {
         truncated
     }
 }
+
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
     pub fn new(
         source_path: String,
@@ -268,6 +270,19 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     self.current_source_location
                 ),
             },
+            String { value } => {
+                let v = try_get_constant_string(value).expect("NotImplemented string value");
+                if self.ctx.func {
+                    Value::Str {
+                        value: self
+                            .builder
+                            .build_global_string_ptr(v.as_str(), ".str")
+                            .as_pointer_value(),
+                    }
+                } else {
+                    panic!("NotImplemented builder for global string")
+                }
+            }
             Call {
                 function,
                 args,
@@ -301,7 +316,10 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         let mut func_name = match &func.node {
             ast::ExpressionType::Identifier { name } => name,
             _ => {
-                panic!("{:?}\nUnknown function name {:?}", self.current_source_location, func.node);
+                panic!(
+                    "{:?}\nUnknown function name {:?}",
+                    self.current_source_location, func.node
+                );
             }
         }
         .as_str();
@@ -311,6 +329,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             "digital_write" => "digitalWrite",
             _ => func_name,
         };
+        // TODO: Mangling
 
         let func = self.get_function(func_name).expect(
             format!(
@@ -325,20 +344,19 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         let mut args_value: Vec<BasicValueEnum> = vec![];
 
         for (expr, proto) in args.iter().zip(args_proto.iter()) {
-            // TODO: Currently only convert to i8. Match arguments' types
-            let value = match self.compile_expr(expr) {
-                Value::I16 { value } => value,
-                _ => panic!("NotImplemented function call argument type"),
-            };
-            /* self.builder.build_int_truncate(
-                self.context.i8_type().const_int(vv, false),
-                self.context.i8_type(),
-                "cast -> i8",
-            );*/
-            let cast = self
-                .builder
-                .build_int_truncate(value, proto.get_type().into_int_type(), "i8");
-            args_value.push(BasicValueEnum::IntValue(cast))
+            let value = self.compile_expr(expr);
+            match value {
+                Value::I16 { value } => {
+                    let cast = self.builder.build_int_truncate(
+                        value,
+                        proto.get_type().into_int_type(),
+                        "icast",
+                    );
+                    args_value.push(BasicValueEnum::IntValue(cast))
+                }
+                Value::Str { value } => args_value.push(BasicValueEnum::PointerValue(value)),
+                _ => {}
+            }
         }
 
         let res = self.builder.build_call(func, args_value.as_slice(), "call");
@@ -361,26 +379,31 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         );
         self.module.add_function(
             "begin",
-            self.context.void_type().fn_type(
-                &[self.context.i16_type().into()],
-                false,
-            ),
+            self.context
+                .void_type()
+                .fn_type(&[self.context.i16_type().into()], false),
             None,
         );
         self.module.add_function(
             "print",
+            self.context
+                .void_type()
+                .fn_type(&[self.context.i16_type().into()], false),
+            None,
+        );
+        /*self.module.add_function(
+            "print",
             self.context.void_type().fn_type(
-                &[self.context.i16_type().into()],
+                &[self.context.i8_type().ptr_type(AddressSpace::Generic).into()],
                 false,
             ),
             None,
-        );
+        );*/
         self.module.add_function(
             "delay",
-            self.context.void_type().fn_type(
-                &[self.context.i32_type().into()],
-                false,
-            ),
+            self.context
+                .void_type()
+                .fn_type(&[self.context.i32_type().into()], false),
             None,
         );
         self.module.add_function(
@@ -404,5 +427,26 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 self.compile_stmt(&statement);
             }
         }
+    }
+}
+
+fn try_get_constant_string(string: &ast::StringGroup) -> Option<String> {
+    fn get_constant_string_inner(out_string: &mut String, string: &ast::StringGroup) -> bool {
+        match string {
+            ast::StringGroup::Constant { value } => {
+                out_string.push_str(&value);
+                true
+            }
+            ast::StringGroup::Joined { values } => values
+                .iter()
+                .all(|value| get_constant_string_inner(out_string, value)),
+            ast::StringGroup::FormattedValue { .. } => false,
+        }
+    }
+    let mut out_string = String::new();
+    if get_constant_string_inner(&mut out_string, string) {
+        Some(out_string)
+    } else {
+        None
     }
 }
