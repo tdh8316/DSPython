@@ -1,3 +1,8 @@
+"""
+Upload an hex file to Arduino
+$ flash.py ARDUINO_DIR HEX_FILE PORT
+"""
+
 import os
 import sys
 

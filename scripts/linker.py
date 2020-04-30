@@ -1,3 +1,8 @@
+"""
+Generate linked object file
+$ linker.py ARDUINO_DIR LLVM_ASSEMBLY
+"""
+
 import os
 import shutil
 import sys

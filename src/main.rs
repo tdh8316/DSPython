@@ -58,7 +58,7 @@ fn build<'a, 'ctx>(source_path: String, emit_llvm: bool) -> String {
 
     let python_source =
         std::fs::read_to_string(&source_path).expect("Couldn't read the source file");
-    let program = rustpython_parser::parser::parse_program(&python_source.as_str()).unwrap();
+    let program = rustpython_parser::parser::parse_program(python_source.as_str()).unwrap();
     let builder = context.create_builder();
     let mut c = Compiler::new(source_path.clone(), &context, &builder, &fpm, &module);
 
@@ -84,8 +84,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let command = matches.subcommand_name().unwrap();
 
     let conf: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string("conf.json").expect("Couldn't load configuration file")
-    ).expect("Couldn't parse configuration");
+        &std::fs::read_to_string("conf.json").expect("Couldn't load configuration file"),
+    )
+    .expect("Couldn't parse configuration");
 
     let arduino_dir = conf["ARDUINO_DIR"].as_str().clone().unwrap();
 
@@ -99,7 +100,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             .to_string(),
         emit_llvm,
     );
-    println!("{}", assembly);
 
     let linker = if cfg!(debug_assertions) {
         "python scripts/linker.py"
