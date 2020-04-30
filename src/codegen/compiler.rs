@@ -384,21 +384,22 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 .fn_type(&[self.context.i16_type().into()], false),
             None,
         );
-        self.module.add_function(
+        // TODO: Add print declarations
+        /*self.module.add_function(
             "print",
             self.context
                 .void_type()
                 .fn_type(&[self.context.i16_type().into()], false),
             None,
-        );
-        /*self.module.add_function(
+        );*/
+        self.module.add_function(
             "print",
             self.context.void_type().fn_type(
                 &[self.context.i8_type().ptr_type(AddressSpace::Generic).into()],
                 false,
             ),
             None,
-        );*/
+        );
         self.module.add_function(
             "delay",
             self.context

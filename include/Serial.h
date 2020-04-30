@@ -2,5 +2,5 @@
 #include "Print.h"
 #include <HardwareSerial.h>
 
-extern "C" void print(int n);
+extern "C" void print(char n[]);
 extern "C" void begin(int b);
