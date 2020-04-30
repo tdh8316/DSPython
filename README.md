@@ -57,8 +57,8 @@ SUBCOMMANDS:
 ## upload
 
 ## The reason this project exists
-I started to develop DSP to program Arduino with not only C++ but also other languages.
-But It's obvious that bringing Python to Arduino is not possible.
+I wanted to program Arduino in other languages as well as C++.
+But because it is impossible to bring standard Python to Arduino, I decided to make a Python compiler that is available to upload directly to the Arduino.
 
 The distinctive feature of DSP is that it uses LLVM internally instead of emitting [C++](https://arduino.github.io/arduino-cli/sketch-build-process/).
 
