@@ -8,7 +8,9 @@ You can browse the [tests](https://github.com/tdh8316/dsp/tree/master/tests) dir
 DSP is a restricted Python subset compiler intended for use in Arduino.
 
 The [micropython](https://github.com/micropython/micropython) project aims to put an implementation of Python 3 on microcontrollers, while not available on Arduino.
-This project was started to use Pythonic programming language for Arduino.
+This project was started to use seemingly Python-like programming language for Arduino.
+
+**Note that it runs directly, not through serial communication.**
 
 ```python
 # Blink the built-in LED of Arduino Uno!
@@ -29,32 +31,12 @@ def loop() -> None:
  - Python parser is based on [RustPython](https://github.com/RustPython/RustPython).
  - LLVM binding for Rust is [Inkwell](https://github.com/TheDan64/inkwell).
 
-After finishing [configuration](./USAGE.md), use below command to run blink example:
+Use below command to run [blink example](https://github.com/tdh8316/dsp/tree/master/examples/Blink.py):
 ```
-cargo run flash tests\Blink\test.py --port SERIAL_PORT
+cargo run flash examples/Blink.py --port SERIAL_PORT
 ```
 
 ## Usage
-```
-Damn Small Python is a Python compiler for Arduino
-
-USAGE:
-    dsp [build|flash] source
-
-FLAGS:
-        --emit-llvm
-    -h, --help         Prints help information
-    -V, --version      Prints version information
-
-SUBCOMMANDS:
-    build    Build
-    flash    Flash
-    help     Prints this message or the help of the given subcommand(s)
-
-
-```
-## compile
-## upload
 
 ## The reason this project exists
 I wanted to program Arduino in other languages as well as C++.

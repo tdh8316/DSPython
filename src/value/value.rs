@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 use inkwell::context::Context;
 use inkwell::types::{AnyTypeEnum, BasicTypeEnum, FloatType, IntType, PointerType, VoidType};
 use inkwell::values::{AnyValueEnum, BasicValueEnum, FloatValue, IntValue, PointerValue};

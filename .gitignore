@@ -16,5 +16,8 @@
 *.hex
 core.a
 
+### Example tests ###
+/examples/*.py.*
+
 ### Arduino core ###
 /include/extra/

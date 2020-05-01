@@ -1,9 +1,10 @@
 from uno import *
 
 
-def setup() -> None:
+def setup():
     begin(9600)
-    print("Hello, world!")
+    print("Hello, Arduino!")
+    print("...from Damn Small Python")
     return None
 
 

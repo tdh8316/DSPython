@@ -76,6 +76,7 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}HardwareSerial1.cpp -o {OUT_PREFIX}HardwareSerial1.cpp.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}abi.cpp -o {OUT_PREFIX}abi.cpp.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {CWD}/include/Serial.cc -o {OUT_PREFIX}Serial.cc.o
+{CPP} {CPP_FLAGS} {INCLUDE_FILES} {CWD}/include/Builtins.cc -o {OUT_PREFIX}Builtins.cc.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}WInterrupts.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring_analog.c.o
@@ -101,6 +102,7 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}HardwareSerial1.cpp.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}abi.cpp.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}Serial.cc.o
+{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}Builtins.cc.o
 {CC} -w -Os -g -flto -fuse-linker-plugin -Wl,--gc-sections -mmcu={MCU} -o {INPUT}.elf {INPUT}.o {OUT_PREFIX}core.a -lm
 {OBJ_COPY} -O ihex -j .eeprom {OBJ} .eeprom=0 {INPUT}.elf {INPUT}.eep
 {OBJ_COPY} -O ihex -R .eeprom {INPUT}.elf {INPUT}.hex
