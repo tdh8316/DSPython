@@ -8,7 +8,8 @@ You can browse the [tests](https://github.com/tdh8316/dsp/tree/master/tests) dir
 DSP is a restricted Python subset compiler intended for use in Arduino.
 
 The [micropython](https://github.com/micropython/micropython) project aims to put an implementation of Python 3 on microcontrollers, while not available on Arduino.
-This project was started to use seemingly Python-like programming language for Arduino.
+
+This project aims to use seemingly Python-like programming language on Arduino.
 
 **Note that it runs directly, not through serial communication.**
 
