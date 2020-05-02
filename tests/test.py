@@ -5,6 +5,7 @@ def setup() -> None:
     string = "Hello, world!"
     begin(9600)
     pin_mode(13, 1)
+    print(69)
     print(string)
     return None
 

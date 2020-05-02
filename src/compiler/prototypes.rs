@@ -18,14 +18,6 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
         None,
     );
     module.add_function(
-        "print",
-        context.void_type().fn_type(
-            &[context.i8_type().ptr_type(AddressSpace::Generic).into()],
-            false,
-        ),
-        None,
-    );
-    module.add_function(
         "printi",
         context
             .void_type()

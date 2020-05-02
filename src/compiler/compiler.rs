@@ -8,6 +8,7 @@ use inkwell::passes::PassManager;
 use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue};
 use rustpython_parser::ast;
 
+use crate::compiler::mangle::mangling;
 use crate::compiler::prototypes::generate_prototypes;
 use crate::value::convert::{truncate_bigint_to_u64, try_get_constant_string};
 use crate::value::value::{Value, ValueHandler, ValueType};
@@ -187,7 +188,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         func: &Box<ast::Expression>,
         args: &Vec<ast::Expression>,
     ) -> Value<'ctx> {
-        let func_name = match &func.node {
+        let mut func_name = match &func.node {
             ast::ExpressionType::Identifier { name } => name,
             _ => {
                 panic!(
@@ -196,17 +197,22 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 );
             }
         }
-        .as_str();
+        .to_string();
 
-        // TODO: Mangling
-
-        let func = self.get_function(func_name).expect(
-            format!(
-                "{:?}\nFunction '{}' is not defined",
-                self.current_source_location, func_name
-            )
-            .as_str(),
-        );
+        let func = match self.get_function(func_name.as_ref()) {
+            Some(f) => f,
+            None => {
+                let at = self.compile_expr(args.clone().first().unwrap()).get_type();
+                let func_name = mangling(&mut func_name, at);
+                self.get_function(func_name).expect(
+                    format!(
+                        "{:?}\nFunction '{}' is not defined",
+                        self.current_source_location, func_name
+                    )
+                    .as_str(),
+                )
+            }
+        };
 
         let args_proto = func.get_params();
 
