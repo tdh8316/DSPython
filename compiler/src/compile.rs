@@ -5,11 +5,6 @@
 //!   https://github.com/python/cpython/blob/master/Python/compile.c
 //!   https://github.com/micropython/micropython/blob/master/py/compile.c
 
-use itertools::Itertools;
-use num_complex::Complex64;
-use rustpython_bytecode::bytecode::{self, CallType, CodeObject, Instruction, Label};
-use rustpython_parser::{ast, parser};
-
 use crate::error::{CompileError, CompileErrorType};
 pub use crate::mode::Mode;
 use crate::output_stream::{CodeObjectStream, OutputStream};
@@ -17,6 +12,10 @@ use crate::peephole::PeepholeOptimizer;
 use crate::symboltable::{
     make_symbol_table, statements_to_symbol_table, Symbol, SymbolScope, SymbolTable,
 };
+use itertools::Itertools;
+use num_complex::Complex64;
+use rustpython_bytecode::bytecode::{self, CallType, CodeObject, Instruction, Label};
+use rustpython_parser::{ast, parser};
 
 type BasicOutputStream = PeepholeOptimizer<CodeObjectStream>;
 
@@ -41,7 +40,6 @@ pub struct CompileOpts {
     /// not emit assert statements
     pub optimize: u8,
 }
-
 impl Default for CompileOpts {
     fn default() -> Self {
         CompileOpts { optimize: 0 }
@@ -145,8 +143,8 @@ pub fn compile_program_single(
 }
 
 impl<O> Default for Compiler<O>
-    where
-        O: OutputStream,
+where
+    O: OutputStream,
 {
     fn default() -> Self {
         Compiler::new(CompileOpts::default())
@@ -760,11 +758,12 @@ impl<O: OutputStream> Compiler<O> {
         }
     }
 
-    fn compile_try_statement(&mut self,
-                             body: &[ast::Statement],
-                             handlers: &[ast::ExceptHandler],
-                             orelse: &Option<ast::Suite>,
-                             finalbody: &Option<ast::Suite>,
+    fn compile_try_statement(
+        &mut self,
+        body: &[ast::Statement],
+        handlers: &[ast::ExceptHandler],
+        orelse: &Option<ast::Suite>,
+        finalbody: &Option<ast::Suite>,
     ) -> CompileResult<()> {
         let mut handler_label = self.new_label();
         let finally_handler_label = self.new_label();
@@ -826,7 +825,7 @@ impl<O: OutputStream> Compiler<O> {
 
             if finalbody.is_some() {
                 self.emit(Instruction::PopBlock); // pop finally block
-                // We enter the finally block, without exception.
+                                                  // We enter the finally block, without exception.
                 self.emit(Instruction::EnterFinally);
             }
 
@@ -1705,10 +1704,10 @@ impl<O: OutputStream> Compiler<O> {
             YieldFrom { value } => {
                 match self.ctx.func {
                     FunctionContext::NoFunction => {
-                        return Err(self.error(CompileErrorType::InvalidYieldFrom));
+                        return Err(self.error(CompileErrorType::InvalidYieldFrom))
                     }
                     FunctionContext::AsyncFunction => {
-                        return Err(self.error(CompileErrorType::AsyncYieldFrom));
+                        return Err(self.error(CompileErrorType::AsyncYieldFrom))
                     }
                     FunctionContext::Function => {}
                 }
@@ -1952,7 +1951,7 @@ impl<O: OutputStream> Compiler<O> {
             ast::ComprehensionKind::Set { .. } => "<setcomp>",
             ast::ComprehensionKind::Dict { .. } => "<dictcomp>",
         }
-            .to_owned();
+        .to_owned();
 
         let line_number = self.get_source_line_number();
         // Create magnificent function <listcomp>:
@@ -2167,7 +2166,7 @@ impl<O: OutputStream> Compiler<O> {
                 // "generator_stop" => {}
                 // "annotations" => {}
                 other => {
-                    return Err(self.error(CompileErrorType::InvalidFutureFeature(other.to_owned())));
+                    return Err(self.error(CompileErrorType::InvalidFutureFeature(other.to_owned())))
                 }
             }
         }
@@ -2295,14 +2294,12 @@ fn compile_conversion_flag(conversion_flag: ast::ConversionFlag) -> bytecode::Co
 
 #[cfg(test)]
 mod tests {
-    use rustpython_bytecode::bytecode::{CodeObject, Label};
+    use super::Compiler;
+    use crate::symboltable::make_symbol_table;
     use rustpython_bytecode::bytecode::Constant::*;
     use rustpython_bytecode::bytecode::Instruction::*;
+    use rustpython_bytecode::bytecode::{CodeObject, Label};
     use rustpython_parser::parser;
-
-    use crate::symboltable::make_symbol_table;
-
-    use super::Compiler;
 
     fn compile_exec(source: &str) -> CodeObject {
         let mut compiler: Compiler = Default::default();
