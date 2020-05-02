@@ -259,9 +259,15 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                             Operator::Sub {} => {
                                 self.builder.build_int_sub(lhs_value, rhs_value, "sub")
                             }
+                            Operator::Mult => {
+                                self.builder.build_int_mul(lhs_value, rhs_value, "mul")
+                            }
+                            Operator::FloorDiv => {
+                                self.builder.build_int_exact_signed_div(lhs_value, rhs_value, "fdv")
+                            }
                             _ => panic!(
-                                "{:?}\nNotImplemented operator for i16",
-                                self.current_source_location
+                                "{:?}\nNotImplemented {:?} operator for i16",
+                                self.current_source_location, op
                             ),
                         },
                     }))
@@ -277,8 +283,8 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                                     self.builder.build_float_sub(lhs_value, rhs_value, "sub")
                                 }
                                 _ => panic!(
-                                    "{:?}\nNotImplemented operator for f32",
-                                    self.current_source_location
+                                    "{:?}\nNotImplemented {:?} operator for f32",
+                                    self.current_source_location, op
                                 ),
                             },
                         }),
