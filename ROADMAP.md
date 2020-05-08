@@ -10,4 +10,6 @@ This document outlines my roadmap to release DSP.
 ...
 
 # Language Roadmap
-...
+- [x] Assign variables
+- [x] Define functions (WIP)
+- [ ] If statement
