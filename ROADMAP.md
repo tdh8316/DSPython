@@ -1,15 +1,23 @@
 This document outlines my roadmap to release DSP.
 
-# Milestones
-- [x] BareMinimum
-- [x] Blink
-- [ ] Fade
-- [x] SoftwareSerialExample
-- [ ] ReadAnalogVoltage
-
-...
-
 # Language Roadmap
 - [x] Assign variables
-- [x] Define functions (WIP)
-- [ ] If statement
+  - [x] String
+  - [x] Integer
+  - [x] Float
+  - [ ] Tuple and List
+  - [ ] Dictionary
+- [x] Operators
+  - Four arithmetic operations
+    - [x] Integer
+    - [ ] Float
+  - String operators
+    - [ ] Multiply
+- [x] Define functions
+  - [ ] Arguments
+- [x] Conditional statement
+  - [ ] Non-boolean condition
+  - [ ] Python statement `elif`
+- [ ] Loop
+  - [ ] While
+  - [ ] For

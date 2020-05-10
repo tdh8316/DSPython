@@ -1,18 +1,18 @@
 # Warning
 This project is in the initial stage now and probably not do what you want.
-You can browse the [tests](https://github.com/tdh8316/dsp/tree/master/tests) directory to see upstream working.
+You can browse the [tests](https://github.com/tdh8316/dsp/tree/master/tests) directory to see upstream working, or [example](https://github.com/tdh8316/dsp/tree/master/examples) directory to learn DSP.
 > Disappointed? Please consider contributing!
 
 # DSP - Damn Small Python
 
 DSP is a restricted Python subset compiler intended for use in Arduino.
 
-The [micropython](https://github.com/micropython/micropython) project aims to put an implementation of Python 3 on microcontrollers, while not available on Arduino.
+The [Micropython](https://github.com/micropython/micropython) project aims to put an implementation of Python 3 on microcontrollers, however, not available on Arduino.
+This project was started to resolve this issue and aims to use a seemingly Python-like programming language on Arduino.
 
-This project aims to use seemingly Python-like programming language on Arduino.
+>**Note that it runs directly on the Arduino board, not through serial communication.**
 
-**Note that it runs directly, not through serial communication.**
-
+Here is an example program that blinks the built-in LED.
 ```python
 # Blink the built-in LED of Arduino Uno!
 from uno import *
@@ -29,13 +29,12 @@ def loop() -> None:
     return None
 ```
 
- - Python parser is based on [RustPython](https://github.com/RustPython/RustPython).
- - LLVM binding for Rust is [Inkwell](https://github.com/TheDan64/inkwell).
-
 Use below command to run [blink example](https://github.com/tdh8316/dsp/tree/master/examples/Blink.py):
 ```
-cargo run flash examples/Blink.py --port SERIAL_PORT
+dsp flash examples/Blink.py --port SERIAL_PORT
 ```
+
+>I don't like the command name `dsp` and it should be replaced. Please share your opinions!
 
 ## Usage
 
@@ -55,5 +54,5 @@ These are not impossible, but currently not our goals.
  - Garbage collector
 ### Never
  - Complete Python implementation
- - Support all python libraries
+ - Compile all python standard libraries
  - Support Multi-core
