@@ -12,6 +12,7 @@ use crate::compiler::mangle::mangling;
 use crate::compiler::prototypes::generate_prototypes;
 use crate::value::convert::{truncate_bigint_to_u64, try_get_constant_string};
 use crate::value::value::{Value, ValueHandler, ValueType};
+use inkwell::IntPredicate;
 
 #[derive(Debug, Clone, Copy)]
 struct CompileContext {
@@ -175,6 +176,14 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     panic!("Import is not implemented");
                 }
             }
+            StatementType::If { test, body, orelse } => {
+                let criteria = self.compile_expr(test);
+                println!("CRI {:?}", criteria);
+                match orelse {
+                    None /*Only if:*/ => {}
+                    Some(statements) => {}
+                }
+            }
             StatementType::Pass => {}
             _ => panic!(
                 "{:?}\nNotImplemented statement {:?}",
@@ -197,7 +206,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 );
             }
         }
-        .to_string();
+            .to_string();
 
         let func = match self.get_function(func_name.as_ref()) {
             Some(f) => f,
@@ -209,7 +218,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                         "{:?}\nFunction '{}' is not defined",
                         self.current_source_location, func_name
                     )
-                    .as_str(),
+                        .as_str(),
                 )
             }
         };
@@ -251,25 +260,27 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         a.invoke_handler(
             ValueHandler::new()
                 .handle_int(&|_, lhs_value| {
-                    b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| Value::I16 {
-                        value: match op {
-                            Operator::Add {} => {
-                                self.builder.build_int_add(lhs_value, rhs_value, "add")
-                            }
-                            Operator::Sub {} => {
-                                self.builder.build_int_sub(lhs_value, rhs_value, "sub")
-                            }
-                            Operator::Mult => {
-                                self.builder.build_int_mul(lhs_value, rhs_value, "mul")
-                            }
-                            Operator::FloorDiv => {
-                                self.builder.build_int_exact_signed_div(lhs_value, rhs_value, "fdv")
-                            }
-                            _ => panic!(
-                                "{:?}\nNotImplemented {:?} operator for i16",
-                                self.current_source_location, op
-                            ),
-                        },
+                    b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
+                        Value::I16 {
+                            value: match op {
+                                Operator::Add {} => {
+                                    self.builder.build_int_add(lhs_value, rhs_value, "add")
+                                }
+                                Operator::Sub {} => {
+                                    self.builder.build_int_sub(lhs_value, rhs_value, "sub")
+                                }
+                                Operator::Mult => {
+                                    self.builder.build_int_mul(lhs_value, rhs_value, "mul")
+                                }
+                                Operator::FloorDiv => self
+                                    .builder
+                                    .build_int_exact_signed_div(lhs_value, rhs_value, "fdv"),
+                                _ => panic!(
+                                    "{:?}\nNotImplemented {:?} operator for i16",
+                                    self.current_source_location, op
+                                ),
+                            },
+                        }
                     }))
                 })
                 .handle_float(&|_, lhs_value| {
@@ -289,6 +300,45 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                             },
                         }),
                     )
+                }),
+        )
+    }
+
+    fn compile_comparison(&mut self, vals: &[ast::Expression], ops: &[ast::Comparison]) -> Value<'ctx> {
+        if ops.len() > 1 {
+            panic!("Chained comparison is not implemented.")
+        }
+
+        if vals.len() > 2 {
+            panic!("Chained comparison is not implemented.")
+        }
+
+        let a = self.compile_expr(vals.first().unwrap());
+        let b = self.compile_expr(vals.last().unwrap());
+
+        let int_predicate = match ops.first().unwrap() {
+            ast::Comparison::Equal => IntPredicate::EQ,
+            _ => panic!("Unsupported int predicate")
+        };
+
+        a.invoke_handler(
+            ValueHandler::new()
+                .handle_int(&|_, lhs_value| {
+                    b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
+                        Value::Bool { value:
+                        self.builder.build_int_compare(
+                            int_predicate,
+                            lhs_value,
+                            rhs_value,
+                            "a"
+                        )
+                        }
+                    }))
+                })
+                .handle_float(&|_, lhs_value| {
+                    b.invoke_handler(ValueHandler::new().handle_float(&|_, rhs_value| {
+                        panic!("Float comparison is not implemented")
+                    }))
                 }),
         )
     }
@@ -347,11 +397,14 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                         "{:?}\nName '{}' is not defined",
                         self.current_source_location, name
                     )
-                    .as_str(),
+                        .as_str(),
                 );
                 match *pointer {
                     var => Value::from_basic_value(*ty, self.builder.build_load(var, name).into()),
                 }
+            }
+            ExpressionType::Compare { vals, ops } => {
+                self.compile_comparison(vals, ops)
             }
             ExpressionType::None => Value::Void,
             _ => {
