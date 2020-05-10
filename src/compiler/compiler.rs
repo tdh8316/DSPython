@@ -6,13 +6,13 @@ use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::passes::PassManager;
 use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue};
+use inkwell::IntPredicate;
 use rustpython_parser::ast;
 
 use crate::compiler::mangle::mangling;
 use crate::compiler::prototypes::generate_prototypes;
 use crate::value::convert::{truncate_bigint_to_u64, try_get_constant_string};
 use crate::value::value::{Value, ValueHandler, ValueType};
-use inkwell::IntPredicate;
 
 #[derive(Debug, Clone, Copy)]
 struct CompileContext {
@@ -33,7 +33,7 @@ pub struct Compiler<'a, 'ctx> {
     pub module: &'a Module<'ctx>,
 
     variables: HashMap<String, (ValueType, PointerValue<'ctx>)>,
-    // fn_value_opt: Option<FunctionValue<'ctx>>,
+    fn_value_opt: Option<FunctionValue<'ctx>>,
 }
 
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
@@ -57,7 +57,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             pm: pass_manager,
             module,
             variables: HashMap::new(),
-            // fn_value_opt: None,
+            fn_value_opt: None,
         }
     }
 
@@ -68,6 +68,11 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     #[inline]
     fn get_function(&self, name: &str) -> Option<FunctionValue<'ctx>> {
         self.module.get_function(name)
+    }
+
+    #[inline]
+    fn fn_value(&self) -> FunctionValue<'ctx> {
+        self.fn_value_opt.unwrap()
     }
 
     fn compile_stmt_function_def(
@@ -86,6 +91,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         self.builder.position_at_end(bb);
 
         self.ctx.func = true;
+        self.fn_value_opt = Some(f);
 
         for statement in body.iter() {
             self.compile_stmt(statement);
@@ -94,6 +100,54 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         // self.compile_expr(returns.as_ref().unwrap());
 
         self.ctx.func = false;
+    }
+
+    fn compile_stmt_conditional(
+        &mut self,
+        cond: Value<'ctx>,
+        body: &Vec<ast::Statement>,
+        orelse: Option<&Vec<ast::Statement>>,
+    ) {
+        // TODO: Accept other cond type
+        // TODO: Implement else-if
+        if cond.get_type() != ValueType::Bool {
+            panic!(
+                "Expected {:?}, but got {:?} type.",
+                ValueType::Bool,
+                cond.get_type()
+            );
+        }
+
+        let parent = self.fn_value();
+
+        let then_bb = self.context.append_basic_block(parent, "then");
+        let else_bb = self.context.append_basic_block(parent, "else");
+        let cont_bb = self.context.append_basic_block(parent, "cont");
+
+        let cond = cond.invoke_handler(ValueHandler::new().handle_bool(&|_, value| value));
+
+        self.builder
+            .build_conditional_branch(cond, then_bb, else_bb);
+
+        self.builder.position_at_end(then_bb);
+        for statement in body.iter() {
+            self.compile_stmt(statement);
+        }
+        self.builder.build_unconditional_branch(cont_bb);
+
+        let _then_bb = self.builder.get_insert_block().unwrap();
+
+        self.builder.position_at_end(else_bb);
+
+        for statement in orelse.unwrap().iter() {
+            self.compile_stmt(statement);
+        }
+
+        self.builder.build_unconditional_branch(cont_bb);
+
+        let _else_bb = self.builder.get_insert_block().unwrap();
+
+        self.builder.position_at_end(cont_bb);
     }
 
     fn compile_stmt(&mut self, stmt: &ast::Statement) {
@@ -177,11 +231,15 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 }
             }
             StatementType::If { test, body, orelse } => {
-                let criteria = self.compile_expr(test);
-                println!("CRI {:?}", criteria);
+                let cond = self.compile_expr(test);
+
                 match orelse {
-                    None /*Only if:*/ => {}
-                    Some(statements) => {}
+                    None /*Only if:*/ => {
+                        self.compile_stmt_conditional(cond, body, None);
+                    }
+                    Some(statements) => {
+                        self.compile_stmt_conditional(cond, body, Some(statements));
+                    }
                 }
             }
             StatementType::Pass => {}
@@ -206,7 +264,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 );
             }
         }
-            .to_string();
+        .to_string();
 
         let func = match self.get_function(func_name.as_ref()) {
             Some(f) => f,
@@ -218,7 +276,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                         "{:?}\nFunction '{}' is not defined",
                         self.current_source_location, func_name
                     )
-                        .as_str(),
+                    .as_str(),
                 )
             }
         };
@@ -304,7 +362,11 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         )
     }
 
-    fn compile_comparison(&mut self, vals: &[ast::Expression], ops: &[ast::Comparison]) -> Value<'ctx> {
+    fn compile_comparison(
+        &mut self,
+        vals: &[ast::Expression],
+        ops: &[ast::Comparison],
+    ) -> Value<'ctx> {
         if ops.len() > 1 {
             panic!("Chained comparison is not implemented.")
         }
@@ -318,21 +380,19 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
         let int_predicate = match ops.first().unwrap() {
             ast::Comparison::Equal => IntPredicate::EQ,
-            _ => panic!("Unsupported int predicate")
+            _ => panic!("Unsupported int predicate"),
         };
 
         a.invoke_handler(
             ValueHandler::new()
                 .handle_int(&|_, lhs_value| {
-                    b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
-                        Value::Bool { value:
-                        self.builder.build_int_compare(
+                    b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| Value::Bool {
+                        value: self.builder.build_int_compare(
                             int_predicate,
                             lhs_value,
                             rhs_value,
-                            "a"
-                        )
-                        }
+                            "a",
+                        ),
                     }))
                 })
                 .handle_float(&|_, lhs_value| {
@@ -397,15 +457,13 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                         "{:?}\nName '{}' is not defined",
                         self.current_source_location, name
                     )
-                        .as_str(),
+                    .as_str(),
                 );
                 match *pointer {
                     var => Value::from_basic_value(*ty, self.builder.build_load(var, name).into()),
                 }
             }
-            ExpressionType::Compare { vals, ops } => {
-                self.compile_comparison(vals, ops)
-            }
+            ExpressionType::Compare { vals, ops } => self.compile_comparison(vals, ops),
             ExpressionType::None => Value::Void,
             _ => {
                 panic!(
