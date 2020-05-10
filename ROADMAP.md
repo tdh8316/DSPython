@@ -13,6 +13,13 @@ This document outlines my roadmap to release DSP.
     - [ ] Float
   - String operators
     - [ ] Multiply
+  - Comparison operators
+    - [x] `==`
+    - [ ] `<`
+    - [ ] `>`
+    - [ ] `<=`
+    - [ ] `>=`
+    - [ ] `!=`
 - [x] Define functions
   - [ ] Arguments
 - [x] Conditional statement
@@ -21,3 +28,10 @@ This document outlines my roadmap to release DSP.
 - [ ] Loop
   - [ ] While
   - [ ] For
+
+#Arduino Features
+- [x] `Serial.begin` as `begin`
+- [x] `Serial.println` as `print`
+- [x] `digitalRead` as `digital_read`
+- [x] `digitalWrite` as `digital_write`
+- [x] `pinMode` as `pin_mode`

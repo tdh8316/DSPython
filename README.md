@@ -1,6 +1,8 @@
 # Warning
 This project is in the initial stage now and probably not do what you want.
 You can browse the [tests](https://github.com/tdh8316/dsp/tree/master/tests) directory to see upstream working, or [example](https://github.com/tdh8316/dsp/tree/master/examples) directory to learn DSP.
+
+[Language roadmap](https://github.com/tdh8316/dsp/blob/master/ROADMAP.md)
 > Disappointed? Please consider contributing!
 
 # DSP - Damn Small Python
