@@ -6,7 +6,6 @@
 
 ### Rust ###
 /target/
-**/*.rs.bk
 
 ### DSP and compiler outputs ###
 *.o

@@ -1,4 +1,4 @@
-use crate::value::value::ValueType;
+use crate::value::ValueType;
 
 pub fn mangling(origin: &mut String, at: ValueType) -> &String {
     origin.push_str(match at {
