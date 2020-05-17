@@ -2,6 +2,7 @@
 #include "Print.h"
 #include <HardwareSerial.h>
 
-extern "C" void printi(int n);
-extern "C" void prints(char c[]);
+extern "C" void print__i__(int n);
+extern "C" void print__f__(int n);
+extern "C" void print__s__(char c[]);
 extern "C" void begin(int b);
