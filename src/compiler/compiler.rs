@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::passes::PassManager;
+
 use inkwell::values::{FunctionValue, PointerValue};
 use inkwell::{FloatPredicate, IntPredicate};
 use rustpython_parser::ast;
@@ -24,7 +24,6 @@ pub(crate) struct CompileContext {
 pub struct Compiler<'a, 'ctx> {
     pub context: &'ctx Context,
     pub builder: &'a Builder<'ctx>,
-    pub pm: &'a PassManager<FunctionValue<'ctx>>,
     pub module: &'a Module<'ctx>,
 
     source_path: String,
@@ -39,11 +38,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         source_path: String,
         context: &'ctx Context,
         builder: &'a Builder<'ctx>,
-        pass_manager: &'a PassManager<FunctionValue<'ctx>>,
         module: &'a Module<'ctx>,
     ) -> Self {
         Compiler {
-            // symbol_table_stack: Vec::new(),
             source_path,
             current_source_location: ast::Location::default(),
             ctx: CompileContext {
@@ -52,7 +49,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             },
             context,
             builder,
-            pm: pass_manager,
             module,
             variables: HashMap::new(),
             fn_value_opt: None,

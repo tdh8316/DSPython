@@ -5,8 +5,10 @@ use std::process::Command;
 
 use clap::{App, Arg, ArgMatches};
 use inkwell::context::Context;
-use inkwell::passes::PassManager;
+use inkwell::module::Module;
+use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::targets::{TargetData, TargetTriple};
+use inkwell::OptimizationLevel;
 use rustpython_parser::parser::parse_program;
 
 mod compiler;
@@ -20,6 +22,7 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
     app.arg(Arg::with_name("command").index(1).required(true))
         .arg(Arg::with_name("file").index(2).required(true))
         .arg(Arg::with_name("emit-llvm").long("emit-llvm"))
+        .arg(Arg::with_name("no-opt").long("no-opt"))
         .arg(
             Arg::with_name("port")
                 .takes_value(true)
@@ -29,7 +32,7 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
         .get_matches()
 }
 
-fn build<'a, 'ctx>(pkg: &str) -> String {
+fn build<'a, 'ctx>(pkg: &str, no_opt: bool) -> String {
     let ctx = Context::create();
     let module = ctx.create_module(pkg);
 
@@ -40,8 +43,11 @@ fn build<'a, 'ctx>(pkg: &str) -> String {
     // LLVM triple
     module.set_triple(&TargetTriple::create("avr"));
 
-    let pm = PassManager::create(&module);
-    pm.initialize();
+    // Initialize pass manager
+    let pm: PassManager<Module> = PassManager::create(());
+    let pm_builder = PassManagerBuilder::create();
+    pm_builder.set_optimization_level(OptimizationLevel::Aggressive);
+    pm_builder.populate_module_pass_manager(&pm);
 
     // Read source code from package file
     let python_source = read_to_string(pkg).unwrap();
@@ -52,8 +58,13 @@ fn build<'a, 'ctx>(pkg: &str) -> String {
     // Create a root builder context
     let builder = ctx.create_builder();
 
-    let mut c = compiler::Compiler::new(String::from(pkg), &ctx, &builder, &pm, &module);
+    let mut c = compiler::Compiler::new(String::from(pkg), &ctx, &builder, &module);
     c.compile(program);
+
+    // Run passes
+    if !no_opt {
+        pm.run_on(&c.module);
+    }
 
     // LLVM assembly path
     let assembly = String::from(pkg) + ".ll";
@@ -78,6 +89,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let command = matches.value_of("command").unwrap();
     let file = matches.value_of("file").unwrap();
     let emit_llvm = matches.is_present("emit-llvm");
+    let no_opt = matches.is_present("no-opt");
 
     // Load the environmental variable: `ARDUINO_DIR`
     let _arduino_dir = std::env::var("ARDUINO_DIR").expect(
@@ -91,7 +103,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Build assembly from python file and return it
-    let assembly = build(file);
+    let assembly = build(file, no_opt);
 
     // Linker path
     let linker = if cfg!(debug_assertions) {
