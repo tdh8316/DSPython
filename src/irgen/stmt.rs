@@ -170,7 +170,14 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
         let else_bb = self.context.append_basic_block(parent, "else");
         let cont_bb = self.context.append_basic_block(parent, "cont");
 
-        let cond = cond.invoke_handler(ValueHandler::new().handle_bool(&|_, value| value));
+        let cond = cond.invoke_handler(
+            ValueHandler::new()
+                .handle_bool(&|_, value| value)
+                .handle_int(&|_, _value| {
+                    // TODO: Every integer except of 0 is True
+                    panic!("NotImplemented")
+                }),
+        );
 
         self.builder
             .build_conditional_branch(cond, then_bb, else_bb);
@@ -185,8 +192,13 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
 
         self.builder.position_at_end(else_bb);
 
-        for statement in orelse.unwrap().iter() {
-            self.compile_stmt(statement);
+        match orelse {
+            Some(statements) => {
+                for statement in statements.iter() {
+                    self.compile_stmt(statement);
+                }
+            }
+            None => {}
         }
 
         self.builder.build_unconditional_branch(cont_bb);

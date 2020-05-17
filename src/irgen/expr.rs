@@ -34,7 +34,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                 },
                 ast::Number::Complex { real: _, imag: _ } => {
                     panic!(
-                        "{:?}\nNotImplemented  builder for imaginary number",
+                        "{:?}\nNotImplemented builder for imaginary number",
                         self.current_source_location
                     );
                 }
@@ -49,6 +49,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                             .as_pointer_value(),
                     }
                 } else {
+                    // TODO: Global string builder
                     panic!("NotImplemented builder for global string")
                 }
             }
