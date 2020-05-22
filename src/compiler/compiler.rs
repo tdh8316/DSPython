@@ -55,21 +55,21 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         }
     }
 
-    pub(crate) fn set_source_location(&mut self, location: ast::Location) {
+    pub fn set_source_location(&mut self, location: ast::Location) {
         self.current_source_location = location;
     }
 
     #[inline]
-    pub(crate) fn get_function(&self, name: &str) -> Option<FunctionValue<'ctx>> {
+    pub fn get_function(&self, name: &str) -> Option<FunctionValue<'ctx>> {
         self.module.get_function(name)
     }
 
     #[inline]
-    pub(crate) fn fn_value(&self) -> FunctionValue<'ctx> {
+    pub fn fn_value(&self) -> FunctionValue<'ctx> {
         self.fn_value_opt.unwrap()
     }
 
-    pub(crate) fn compile_op(
+    pub fn compile_op(
         &mut self,
         a: Value<'ctx>,
         op: &ast::Operator,
@@ -123,7 +123,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         )
     }
 
-    pub(crate) fn compile_comparison(
+    pub fn compile_comparison(
         &mut self,
         vals: &[ast::Expression],
         ops: &[ast::Comparison],
