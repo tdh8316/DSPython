@@ -39,6 +39,7 @@ dsp flash examples/Blink.py --port SERIAL_PORT
 >I don't like the command name `dsp` and it should be replaced. Please share your opinions!
 
 ## Usage
+TODO
 
 ## The reason this project exists
 I wanted to program Arduino in other languages as well as C++.
@@ -54,7 +55,13 @@ The distinctive feature of DSP is that it uses LLVM internally instead of emitti
 These are not impossible, but currently not our goals.
  - Compile to other platforms
  - Garbage collector
+ - Class and inheritance
 ### Never
  - Complete Python implementation
  - Compile all python standard libraries
  - Support Multi-core
+ 
+# Credit
+- The python parser is based on [RustPython](https://github.com/RustPython/RustPython)
+- Value handler from [testlang](https://github.com/AcrylicShrimp/testlang-rust/)
+- LLVM binding for rust is [Inkwell](https://github.com/TheDan64/inkwell)
