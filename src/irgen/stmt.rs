@@ -3,6 +3,8 @@ use rustpython_parser::ast;
 use crate::compiler::Compiler;
 use crate::irgen::expr::CGExpr;
 use crate::value::{Value, ValueHandler, ValueType};
+use inkwell::{IntPredicate, FloatPredicate};
+use inkwell::values::IntValue;
 
 pub trait CGStmt<'a, 'ctx> {
     fn compile_stmt(&mut self, stmt: &ast::Statement);
@@ -156,13 +158,13 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
         orelse: Option<&Vec<ast::Statement>>,
     ) {
         // TODO: Accept other cond type
-        if cond.get_type() != ValueType::Bool {
+        /*if cond.get_type() != ValueType::Bool {
             panic!(
                 "Expected {:?}, but got {:?} type.",
                 ValueType::Bool,
                 cond.get_type()
             );
-        }
+        }*/
 
         let parent = self.fn_value();
 
@@ -173,9 +175,45 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
         let cond = cond.invoke_handler(
             ValueHandler::new()
                 .handle_bool(&|_, value| value)
-                .handle_int(&|_, _value| {
-                    // TODO: Every integer except of 0 is True
-                    panic!("NotImplemented")
+
+                // In Python, all integers except 0 are considered true.
+                .handle_int(&|value, _| {
+                    let a = value;
+                    let b = Value::I16 { value: self.context.i16_type().const_zero() };
+
+                    // This LLVM expression is same as `lhs_value != 0`
+                    // Therefore all integers except 0 are considered true.
+                    let c = a.invoke_handler(
+                        ValueHandler::new()
+                            .handle_int(&|_, lhs_value| {
+                                b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
+                                    Value::Bool {
+                                        value: self.builder.build_int_compare(
+                                            IntPredicate::NE,
+                                            lhs_value,
+                                            rhs_value,
+                                            "a",
+                                        ),
+                                    }
+                                }))
+                            })
+                            .handle_float(&|_, lhs_value| {
+                                b.invoke_handler(ValueHandler::new().handle_float(&|_, rhs_value| {
+                                    Value::Bool {
+                                        value: self.builder.build_float_compare(
+                                            FloatPredicate::ONE,
+                                            lhs_value,
+                                            rhs_value,
+                                            "a",
+                                        ),
+                                    }
+                                }))
+                            }),
+                    );
+
+                    c.invoke_handler(
+                        ValueHandler::new().handle_bool(&|_, value| value)
+                    )
                 }),
         );
 
