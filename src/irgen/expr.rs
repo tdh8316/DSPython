@@ -179,6 +179,9 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                     );
                     args_value.push(BasicValueEnum::IntValue(cast))
                 }
+                Value::F32 { value } => {
+                    args_value.push(BasicValueEnum::FloatValue(value))
+                }
                 Value::Str { value } => args_value.push(BasicValueEnum::PointerValue(value)),
                 _ => panic!(
                     "{:?}\nNotImplemented argument type",
@@ -191,7 +194,12 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
         res.set_tail_call(true);
 
         match res.try_as_basic_value() {
-            Either::Left(bv) => Value::from_basic_value(ValueType::Void, bv),
+            // Return type
+            Either::Left(bv) => Value::from_basic_value(if bv.is_int_value() {
+                ValueType::I16
+            } else {
+                unimplemented!()
+            }, bv),
             Either::Right(_) => Value::Void,
         }
     }

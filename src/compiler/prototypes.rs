@@ -3,6 +3,7 @@ use inkwell::module::Module;
 use inkwell::AddressSpace;
 
 pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Context) {
+    // Arduino builtins
     module.add_function(
         "pin_mode",
         context
@@ -17,6 +18,22 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
             .fn_type(&[context.i16_type().into()], false),
         None,
     );
+    module.add_function(
+        "delay",
+        context
+            .void_type()
+            .fn_type(&[context.i32_type().into()], false),
+        None,
+    );
+    module.add_function(
+        "digital_write",
+        context
+            .void_type()
+            .fn_type(&[context.i8_type().into(), context.i8_type().into()], false),
+        None,
+    );
+
+    // Python builtins
     module.add_function(
         "print__i__",
         context
@@ -40,17 +57,8 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
         None,
     );
     module.add_function(
-        "delay",
-        context
-            .void_type()
-            .fn_type(&[context.i32_type().into()], false),
-        None,
-    );
-    module.add_function(
-        "digital_write",
-        context
-            .void_type()
-            .fn_type(&[context.i8_type().into(), context.i8_type().into()], false),
+        "int__f__",
+        context.i16_type().fn_type(&[context.f32_type().into()], false),
         None,
     );
 }
