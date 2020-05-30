@@ -137,11 +137,12 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
         }
         .to_string();
 
+        let first_arg = self.compile_expr(args.clone().first().unwrap());
+
         let func = match self.get_function(func_name.as_ref()) {
             Some(f) => f,
             None => {
-                let at = self.compile_expr(args.clone().first().unwrap()).get_type();
-                let func_name = mangling(&mut func_name, at);
+                let func_name = mangling(&mut func_name, first_arg.get_type());
                 self.get_function(func_name).expect(
                     format!(
                         "{:?}\nFunction '{}' is not defined",
@@ -156,8 +157,14 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
 
         let mut args_value: Vec<BasicValueEnum> = vec![];
 
-        for (expr, proto) in args.iter().zip(args_proto.iter()) {
-            let value = self.compile_expr(expr);
+        for (i, expr_proto) in args.iter().zip(args_proto.iter()).enumerate() {
+            let expr = expr_proto.0;
+            let proto = expr_proto.1;
+            let value = if i == 1 {
+                self.compile_expr(expr)
+            } else {
+                first_arg
+            };
             match value {
                 Value::I8 { value } => {
                     let cast = self.builder.build_int_cast(

@@ -5,7 +5,7 @@ use inkwell::types::{AnyTypeEnum, BasicTypeEnum, FloatType, IntType, PointerType
 use inkwell::values::{AnyValueEnum, BasicValueEnum, FloatValue, IntValue, PointerValue};
 use inkwell::AddressSpace;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Value<'ctx> {
     Void,
     Bool { value: IntValue<'ctx> },
