@@ -32,6 +32,13 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
             .fn_type(&[context.i8_type().into(), context.i8_type().into()], false),
         None,
     );
+    module.add_function(
+        "digital_read",
+        context
+            .i8_type()
+            .fn_type(&[context.i8_type().into()], false),
+        None,
+    );
 
     // Python builtins
     module.add_function(
@@ -58,7 +65,9 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
     );
     module.add_function(
         "int__f__",
-        context.i16_type().fn_type(&[context.f32_type().into()], false),
+        context
+            .i16_type()
+            .fn_type(&[context.f32_type().into()], false),
         None,
     );
 }

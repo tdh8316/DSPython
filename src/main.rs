@@ -61,7 +61,7 @@ fn build<'a, 'ctx>(pkg: &str, no_opt: bool) -> String {
     let mut c = compiler::Compiler::new(String::from(pkg), &ctx, &builder, &module);
     c.compile(program);
 
-    // Run passes
+    // Run passes if no_opt flag is off
     if !no_opt {
         pm.run_on(&c.module);
     }
@@ -158,11 +158,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         if !out.status.success() {
             println!("{}", String::from_utf8_lossy(&out.stderr));
             panic!("Failed to perform uploading.");
-        } else {
-            // Remove the hex file
-            remove_file(hex_file).unwrap();
-            println!("[Done]")
         }
+        // Remove the hex file after finishing upload
+        remove_file(hex_file).unwrap();
+        println!("[Done]")
     }
 
     // Remove the assembly file if flag `emit-llvm` is not enabled

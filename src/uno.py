@@ -19,5 +19,5 @@ def digital_write(_pin: int, _level: int) -> None:
     ...
 
 
-def digital_read(_pin: int, _level: int) -> None:
+def digital_read(_pin: int) -> int:
     ...

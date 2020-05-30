@@ -91,9 +91,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                                 Operator::Mult => {
                                     self.builder.build_int_mul(lhs_value, rhs_value, "mul")
                                 }
-                                Operator::FloorDiv => {
-                                    self.builder.build_int_exact_signed_div(lhs_value, rhs_value, "div")
-                                }
+                                Operator::FloorDiv => self
+                                    .builder
+                                    .build_int_exact_signed_div(lhs_value, rhs_value, "div"),
                                 _ => panic!(
                                     "{:?}\nNotImplemented {:?} operator for i16",
                                     self.current_source_location, op

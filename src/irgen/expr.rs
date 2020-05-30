@@ -2,10 +2,10 @@ use either::Either;
 use inkwell::values::BasicValueEnum;
 use rustpython_parser::ast;
 
-use crate::compiler::Compiler;
 use crate::compiler::mangle::mangling;
-use crate::value::{Value, ValueType};
+use crate::compiler::Compiler;
 use crate::value::convert::{truncate_bigint_to_u64, try_get_constant_string};
+use crate::value::{Value, ValueType};
 
 pub trait CGExpr<'a, 'ctx> {
     fn compile_expr(&mut self, expr: &ast::Expression) -> Value<'ctx>;
@@ -72,7 +72,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                         "{:?}\nName '{}' is not defined",
                         self.current_source_location, name
                     )
-                        .as_str(),
+                    .as_str(),
                 );
                 match *pointer {
                     var => Value::from_basic_value(*ty, self.builder.build_load(var, name).into()),
@@ -86,44 +86,32 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
             ExpressionType::False => Value::Bool {
                 value: self.context.bool_type().const_int(0, false),
             },
-            ExpressionType::Unop { op, a } => {
-                match &a.node {
-                    ExpressionType::Number { value } => match value {
-                        ast::Number::Integer { value } => {
-                            match op {
-                                ast::UnaryOperator::Neg => Value::I16 {
-                                    value: self
-                                        .context
-                                        .i16_type()
-                                        .const_int(truncate_bigint_to_u64(&-value), true),
-                                },
-                                _ => {
-                                    panic!("NotImplemented unop for i16")
-                                }
-                            }
-                        }
-                        ast::Number::Float { value } => {
-                            match op {
-                                ast::UnaryOperator::Neg => Value::F32 {
-                                    value: self.context.f32_type().const_float(-value.clone()),
-                                },
-                                _ => {
-                                    panic!("NotImplemented unop for f32")
-                                }
-                            }
-                        }
-                        ast::Number::Complex { real: _, imag: _ } => {
-                            panic!(
-                                "{:?}\nNotImplemented builder for imaginary number",
-                                self.current_source_location
-                            );
-                        }
+            ExpressionType::Unop { op, a } => match &a.node {
+                ExpressionType::Number { value } => match value {
+                    ast::Number::Integer { value } => match op {
+                        ast::UnaryOperator::Neg => Value::I16 {
+                            value: self
+                                .context
+                                .i16_type()
+                                .const_int(truncate_bigint_to_u64(&-value), true),
+                        },
+                        _ => panic!("NotImplemented unop for i16"),
                     },
-                    _ => {
-                        panic!("NotImplemented type for unop")
+                    ast::Number::Float { value } => match op {
+                        ast::UnaryOperator::Neg => Value::F32 {
+                            value: self.context.f32_type().const_float(-value.clone()),
+                        },
+                        _ => panic!("NotImplemented unop for f32"),
+                    },
+                    ast::Number::Complex { real: _, imag: _ } => {
+                        panic!(
+                            "{:?}\nNotImplemented builder for imaginary number",
+                            self.current_source_location
+                        );
                     }
-                }
-            }
+                },
+                _ => panic!("NotImplemented type for unop"),
+            },
             _ => {
                 panic!(
                     "{:?}\nNotImplemented expression {:?}",
@@ -147,7 +135,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                 );
             }
         }
-            .to_string();
+        .to_string();
 
         let func = match self.get_function(func_name.as_ref()) {
             Some(f) => f,
@@ -159,7 +147,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                         "{:?}\nFunction '{}' is not defined",
                         self.current_source_location, func_name
                     )
-                        .as_str(),
+                    .as_str(),
                 )
             }
         };
@@ -171,17 +159,23 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
         for (expr, proto) in args.iter().zip(args_proto.iter()) {
             let value = self.compile_expr(expr);
             match value {
-                Value::I16 { value } => {
-                    let cast = self.builder.build_int_truncate(
+                Value::I8 { value } => {
+                    let cast = self.builder.build_int_cast(
                         value,
                         proto.get_type().into_int_type(),
                         "icast",
                     );
                     args_value.push(BasicValueEnum::IntValue(cast))
                 }
-                Value::F32 { value } => {
-                    args_value.push(BasicValueEnum::FloatValue(value))
+                Value::I16 { value } => {
+                    let cast = self.builder.build_int_truncate(
+                        value,
+                        proto.get_type().into_int_type(),
+                        "itrunc",
+                    );
+                    args_value.push(BasicValueEnum::IntValue(cast))
                 }
+                Value::F32 { value } => args_value.push(BasicValueEnum::FloatValue(value)),
                 Value::Str { value } => args_value.push(BasicValueEnum::PointerValue(value)),
                 _ => panic!(
                     "{:?}\nNotImplemented argument type",
@@ -195,11 +189,20 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
 
         match res.try_as_basic_value() {
             // Return type
-            Either::Left(bv) => Value::from_basic_value(if bv.is_int_value() {
-                ValueType::I16
-            } else {
-                unimplemented!()
-            }, bv),
+            Either::Left(bv) => Value::from_basic_value(
+                if bv.is_int_value() {
+                    let iv = bv.into_int_value();
+
+                    match iv.get_type().get_bit_width() {
+                        8 => ValueType::I8,
+                        16 => ValueType::I16,
+                        _ => unimplemented!(),
+                    }
+                } else {
+                    unimplemented!()
+                },
+                bv,
+            ),
             Either::Right(_) => Value::Void,
         }
     }
