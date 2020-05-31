@@ -18,6 +18,7 @@ use crate::value::{Value, ValueHandler, ValueType};
 pub(crate) struct CompileContext {
     pub in_loop: bool,
     pub func: bool,
+    pub ret: bool,
 }
 
 #[derive(Debug)]
@@ -46,6 +47,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             ctx: CompileContext {
                 in_loop: false,
                 func: false,
+                ret: false
             },
             context,
             builder,

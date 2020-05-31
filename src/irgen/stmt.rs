@@ -75,6 +75,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                 }
             }
             StatementType::Return { value } => {
+                self.ctx.ret = true;
                 if !self.ctx.func {
                     panic!(
                         "{:?}\n'return' outside function",
@@ -119,7 +120,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                     }
                 }
             }
-            StatementType::Pass => {}
+            StatementType::Pass => { /* Pass */ }
             _ => panic!(
                 "{:?}\nNotImplemented statement {:?}",
                 self.current_source_location, stmt.node
@@ -158,6 +159,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
             }
         }
 
+        self.ctx.ret = false;
         let mut return_type = &String::new();
         if let Some(annotation) = returns {
             match &annotation.node {
@@ -226,6 +228,10 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
 
         for statement in body.iter() {
             self.compile_stmt(statement);
+        }
+
+        if !self.ctx.ret {
+            self.builder.build_return(None);
         }
 
         // self.compile_expr(returns.as_ref().unwrap());
