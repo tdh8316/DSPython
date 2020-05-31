@@ -126,7 +126,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
         func: &Box<ast::Expression>,
         args: &Vec<ast::Expression>,
     ) -> Value<'ctx> {
-        let mut func_name = match &func.node {
+        let func_name = match &func.node {
             ast::ExpressionType::Identifier { name } => name,
             _ => {
                 panic!(
@@ -142,8 +142,8 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
         let func = match self.get_function(func_name.as_ref()) {
             Some(f) => f,
             None => {
-                let func_name = mangling(&mut func_name, first_arg.get_type());
-                self.get_function(func_name).expect(
+                let func_name_mangled = mangling(&func_name, first_arg.get_type());
+                self.get_function(func_name_mangled.as_ref()).expect(
                     format!(
                         "{:?}\nFunction '{}' is not defined",
                         self.current_source_location, func_name
@@ -205,6 +205,8 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                         16 => ValueType::I16,
                         _ => unimplemented!(),
                     }
+                } else if  bv.is_float_value(){
+                    ValueType::F32
                 } else {
                     unimplemented!()
                 },

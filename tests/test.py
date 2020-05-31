@@ -1,18 +1,16 @@
 from uno import *
 
 
+def add(a: float, b: float) -> float:
+    return a + b
+
+
 def setup():
     begin(9600)
-
-    pin_mode(13, 0)
-
-    return None
+    print(add(3.0, 2.5))
+    print(6.9*7.4)
+    return
 
 
 def loop():
-
-    # a=digital_read(13)
-
-    print(digital_read(13))
-
-    return None
+    return

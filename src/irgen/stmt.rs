@@ -1,9 +1,11 @@
+use inkwell::types::BasicTypeEnum;
+use inkwell::values::BasicValue;
+use inkwell::{FloatPredicate, IntPredicate};
 use rustpython_parser::ast;
 
 use crate::compiler::Compiler;
 use crate::irgen::expr::CGExpr;
 use crate::value::{Value, ValueHandler};
-use inkwell::{FloatPredicate, IntPredicate};
 
 pub trait CGStmt<'a, 'ctx> {
     fn compile_stmt(&mut self, stmt: &ast::Statement);
@@ -79,15 +81,17 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                         self.current_source_location
                     )
                 }
-                let value = self.compile_expr(value.as_ref().expect("No return value"));
-                self.builder.build_return(match value {
-                    Value::Void => None,
-                    _ => panic!(
-                        "{:?}\nUnsupported return type {:?}",
-                        self.current_source_location,
-                        value.get_type()
-                    ),
-                });
+                if value.is_none() {
+                    self.builder.build_return(None);
+                } else {
+                    let return_value = self.compile_expr(value.as_ref().unwrap());
+                    return_value.invoke_handler(
+                        ValueHandler::new()
+                            .handle_int(&|_, value| self.builder.build_return(Some(&value)))
+                            .handle_float(&|_, value| self.builder.build_return(Some(&value)))
+                            .handle_void(&|_| self.builder.build_return(None)),
+                    );
+                }
             }
             StatementType::ImportFrom {
                 level,
@@ -126,17 +130,96 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
     fn compile_stmt_function_def(
         &mut self,
         name: &String,
-        _args: &Box<ast::Parameters>,
+        args: &Box<ast::Parameters>,
         body: &ast::Suite,
-        _returns: &Option<ast::Expression>,
+        returns: &Option<ast::Expression>,
     ) {
-        // TODO: args, implicit returns
-        let f = self
-            .module
-            .add_function(name, self.context.void_type().fn_type(&[], false), None);
+        let mut args_vec: Vec<BasicTypeEnum> = vec![];
+        let mut arg_names = vec![];
+
+        for arg in args.args.iter() {
+            arg_names.push(&arg.arg);
+            if arg.annotation.is_none() {
+                panic!("You must provide type hint for args");
+            }
+            let arg_type;
+            match &arg.annotation.as_ref().unwrap().node {
+                ast::ExpressionType::Identifier { name } => {
+                    arg_type = name;
+                }
+                _ => {
+                    panic!("Unknown return annotation node");
+                }
+            }
+            match arg_type.as_str() {
+                "int" => args_vec.push(self.context.i16_type().into()),
+                "float" => args_vec.push(self.context.f32_type().into()),
+                _ => panic!("Unknown argument type {}", arg_type),
+            }
+        }
+
+        let mut return_type = &String::new();
+        if let Some(annotation) = returns {
+            match &annotation.node {
+                ast::ExpressionType::Identifier { name } => {
+                    return_type = name;
+                }
+                _ => {
+                    panic!("Unknown return annotation node");
+                }
+            }
+        }
+
+        let f = match return_type.as_str() {
+            "int8" => self.module.add_function(
+                name,
+                self.context.i8_type().fn_type(&args_vec, false),
+                None,
+            ),
+            "int" => self.module.add_function(
+                name,
+                self.context.i16_type().fn_type(&args_vec, false),
+                None,
+            ),
+            "float" => self.module.add_function(
+                name,
+                self.context.f32_type().fn_type(&args_vec, false),
+                None,
+            ),
+            "" | "None" => self.module.add_function(
+                name,
+                self.context.void_type().fn_type(&args_vec, false),
+                None,
+            ),
+
+            _ => panic!("Unknown return type {}", return_type),
+        };
         let bb = self.context.append_basic_block(f, "");
 
         self.builder.position_at_end(bb);
+
+        for (i, bv) in f.get_param_iter().enumerate() {
+            let v;
+            if bv.is_int_value() {
+                bv.into_int_value().set_name(arg_names[i]);
+                v = Value::I16 {
+                    value: bv.into_int_value(),
+                }
+            } else if bv.is_float_value() {
+                bv.into_float_value().set_name(arg_names[i]);
+                v = Value::F32 {
+                    value: bv.into_float_value(),
+                }
+            } else {
+                panic!("NotImplemented function argument type")
+            }
+            let pointer = self
+                .builder
+                .build_alloca(v.get_type().to_basic_type(self.context), arg_names[i]);
+            self.builder.build_store(pointer, bv);
+            self.variables
+                .insert(arg_names[i].to_string(), (v.get_type(), pointer));
+        }
 
         self.ctx.func = true;
         self.fn_value_opt = Some(f);

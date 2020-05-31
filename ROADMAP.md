@@ -10,9 +10,10 @@ This document outlines my roadmap to release DSP.
 - [x] Operators
   - Four arithmetic operations
     - [x] Integer
-    - [ ] Float
+    - [x] Float
   - String operators
     - [ ] Multiply
+    - [ ] Add
   - Comparison operators
     - [x] `==`
     - [ ] `<`
@@ -21,17 +22,24 @@ This document outlines my roadmap to release DSP.
     - [ ] `>=`
     - [ ] `!=`
 - [x] Define functions
-  - [ ] Arguments
+  - [x] Arguments
+  - [ ] Variable arguments
+  - [ ] Keyword arguments
 - [x] Conditional statement
-  - [ ] Non-boolean condition
-  - [ ] Python statement `elif`
+  - Non-boolean condition
+    - [x] Integer
+    - [x] Float
 - [ ] Loop
   - [ ] While
   - [ ] For
 
-#Arduino Features
+# Arduino Features
 - [x] `Serial.begin` as `begin`
 - [x] `Serial.println` as `print`
 - [x] `digitalRead` as `digital_read`
 - [x] `digitalWrite` as `digital_write`
 - [x] `pinMode` as `pin_mode`
+
+# Python builtins callable
+- [x] `print`
+- [x] `int`

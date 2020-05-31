@@ -1,6 +1,8 @@
 use crate::value::ValueType;
 
-pub fn mangling(origin: &mut String, at: ValueType) -> &String {
+pub fn mangling(origin: &String, at: ValueType) -> String {
+    let origin = &mut origin.clone();
+
     origin.push_str(match at {
         ValueType::Str => "__s__",
         ValueType::I8 => "__i__",
@@ -10,6 +12,6 @@ pub fn mangling(origin: &mut String, at: ValueType) -> &String {
     });
 
     {
-        origin
+        origin.clone()
     }
 }
