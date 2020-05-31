@@ -6,9 +6,9 @@ use std::process::Command;
 use clap::{App, Arg, ArgMatches};
 use inkwell::context::Context;
 use inkwell::module::Module;
+use inkwell::OptimizationLevel;
 use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::targets::{TargetData, TargetTriple};
-use inkwell::OptimizationLevel;
 use rustpython_parser::parser::parse_program;
 
 mod compiler;
@@ -19,15 +19,23 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 
 fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
-    app.arg(Arg::with_name("command").index(1).required(true))
-        .arg(Arg::with_name("file").index(2).required(true))
-        .arg(Arg::with_name("emit-llvm").long("emit-llvm"))
-        .arg(Arg::with_name("no-opt").long("no-opt"))
+    let mut usage = app.get_name().to_string();
+    usage.push_str(" <command> <file> [-p PORT] [--emit-llvm] [--no-opt]");
+    app.usage(&*usage)
+        .arg(Arg::with_name("command").index(1).required(true)
+            .help("Command to execute {build,flash}"))
+        .arg(Arg::with_name("file").index(2).required(true)
+            .help("Source file path"))
+        .arg(Arg::with_name("emit-llvm").long("emit-llvm")
+            .help("Emits llvm ir"))
+        .arg(Arg::with_name("no-opt").long("no-opt")
+            .help("Disables optimization"))
         .arg(
             Arg::with_name("port")
                 .takes_value(true)
                 .short("p")
-                .long("port"),
+                .long("port")
+                .help("Serial port to flash"),
         )
         .get_matches()
 }
@@ -78,7 +86,7 @@ fn build<'a, 'ctx>(pkg: &str, no_opt: bool) -> String {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let app = App::new("dsp")
+    let app = App::new("dsp"/* TODO: dspython */)
         .version(VERSION)
         .author(AUTHORS)
         .about("Damn Small Python is a Python compiler for Arduino");
