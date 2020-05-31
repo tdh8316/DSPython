@@ -11,7 +11,6 @@ HIGH = 1
 
 def setup():
     pin_mode(LED_BUILTIN, OUTPUT)
-    return None
 
 
 def loop():
@@ -19,4 +18,3 @@ def loop():
     delay(1000)
     digital_write(LED_BUILTIN, LOW)
     delay(1000)
-    return None
