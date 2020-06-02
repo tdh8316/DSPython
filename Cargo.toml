@@ -1,6 +1,6 @@
 [package]
 name = "dsp"
-version = "0.1.0"
+version = "0.1.1-dev"
 authors = ["탁동혁 <tdh8316@naver.com>"]
 edition = "2018"
 
@@ -12,4 +12,3 @@ num-bigint = "0.2"
 num-complex = { version = "0.2", features = ["serde"] }
 num-traits = "0.2"
 rustpython-parser = { git = "https://github.com/RustPython/RustPython" }
-
