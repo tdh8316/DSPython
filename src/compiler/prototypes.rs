@@ -35,7 +35,7 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
     module.add_function(
         "digital_read",
         context
-            .i8_type()
+            .i16_type()
             .fn_type(&[context.i8_type().into()], false),
         None,
     );
@@ -68,6 +68,27 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
         context
             .i16_type()
             .fn_type(&[context.f32_type().into()], false),
+        None,
+    );
+    module.add_function(
+        "int__i__",
+        context
+            .i16_type()
+            .fn_type(&[context.i16_type().into()], false),
+        None,
+    );
+    module.add_function(
+        "float__f__",
+        context
+            .f32_type()
+            .fn_type(&[context.f32_type().into()], false),
+        None,
+    );
+    module.add_function(
+        "float__i__",
+        context
+            .f32_type()
+            .fn_type(&[context.i16_type().into()], false),
         None,
     );
 }
