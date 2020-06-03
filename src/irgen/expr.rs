@@ -205,7 +205,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                         16 => ValueType::I16,
                         _ => unimplemented!(),
                     }
-                } else if  bv.is_float_value(){
+                } else if bv.is_float_value() {
                     ValueType::F32
                 } else {
                     unimplemented!()

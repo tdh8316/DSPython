@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-
 use inkwell::values::{FunctionValue, PointerValue};
 use inkwell::{FloatPredicate, IntPredicate};
 use rustpython_parser::ast;
@@ -11,7 +10,6 @@ use rustpython_parser::ast;
 use crate::compiler::prototypes::generate_prototypes;
 use crate::irgen::expr::CGExpr;
 use crate::irgen::stmt::CGStmt;
-
 use crate::value::{Value, ValueHandler, ValueType};
 
 #[derive(Debug, Clone, Copy)]
@@ -47,7 +45,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             ctx: CompileContext {
                 in_loop: false,
                 func: false,
-                ret: false
+                ret: false,
             },
             context,
             builder,
@@ -69,6 +67,25 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     #[inline]
     pub fn fn_value(&self) -> FunctionValue<'ctx> {
         self.fn_value_opt.unwrap()
+    }
+
+    pub fn create_global(&mut self, name: &String, value: Option<&ast::Expression>) {
+        if let Some(value) = value {
+            let value = self.compile_expr(value);
+        let ty = value.get_type();
+
+        let p = self
+            .module
+            .add_global(ty.to_basic_type(self.context), None, name);
+        p.set_unnamed_addr(true);
+        p.set_initializer(&value.to_basic_value());
+
+        self.variables
+            .insert(name.to_string(), (ty, p.as_pointer_value()));
+        } else {
+            // TODO
+            unimplemented!()
+        }
     }
 
     pub fn compile_op(

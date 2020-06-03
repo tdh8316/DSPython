@@ -48,30 +48,56 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                 self.compile_stmt_function_def(name, args, body, returns);
             }
             StatementType::Assign { targets, value } => {
-                let target = match &targets.last().unwrap().node {
+                if targets.len() > 1 {
+                    panic!("Variable unpacking is not implemented")
+                }
+
+                let target = targets.first().expect("No target provided");
+                let name = match &target.node {
                     ast::ExpressionType::Identifier { name } => name,
                     _ => panic!(
-                        "{:?}\nUnsupported assign target",
-                        self.current_source_location
+                        "{:?}\nUnsupported assign target {:?}",
+                        self.current_source_location, target.node
                     ),
                 };
-                let value = self.compile_expr(value);
-                let ty = value.get_type();
 
                 if self.ctx.func {
+                    let value = self.compile_expr(value);
+                    let ty = value.get_type();
                     let p = self
                         .builder
-                        .build_alloca(ty.to_basic_type(self.context), target);
+                        .build_alloca(ty.to_basic_type(self.context), name);
                     self.builder.build_store(p, value.to_basic_value());
-                    self.variables.insert(target.to_string(), (ty, p));
+                    self.variables.insert(name.to_string(), (ty, p));
                 } else {
-                    let p = self
-                        .module
-                        .add_global(ty.to_basic_type(self.context), None, target);
-                    p.set_unnamed_addr(true);
-                    p.set_initializer(&value.to_basic_value());
-                    self.variables
-                        .insert(target.to_string(), (ty, p.as_pointer_value()));
+                    self.create_global(name, Some(value));
+                }
+            }
+            StatementType::AnnAssign {
+                target,
+                annotation: _,
+                value,
+            } => {
+                if let Some(value) = value {
+                    let name = match &target.node {
+                        ast::ExpressionType::Identifier { name } => name,
+                        _ => panic!(
+                            "{:?}\nUnsupported assign target {:?}",
+                            self.current_source_location, target.node
+                        ),
+                    };
+
+                    if self.ctx.func {
+                        let value = self.compile_expr(value);
+                        let ty = value.get_type();
+                        let p = self
+                            .builder
+                            .build_alloca(ty.to_basic_type(self.context), name);
+                        self.builder.build_store(p, value.to_basic_value());
+                        self.variables.insert(name.to_string(), (ty, p));
+                    } else {
+                        self.create_global(name, Some(value));
+                    }
                 }
             }
             StatementType::Return { value } => {
