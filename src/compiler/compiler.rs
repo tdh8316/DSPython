@@ -69,25 +69,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         self.fn_value_opt.unwrap()
     }
 
-    pub fn create_global(&mut self, name: &String, value: Option<&ast::Expression>) {
-        if let Some(value) = value {
-            let value = self.compile_expr(value);
-        let ty = value.get_type();
-
-        let p = self
-            .module
-            .add_global(ty.to_basic_type(self.context), None, name);
-        p.set_unnamed_addr(true);
-        p.set_initializer(&value.to_basic_value());
-
-        self.variables
-            .insert(name.to_string(), (ty, p.as_pointer_value()));
-        } else {
-            // TODO
-            unimplemented!()
-        }
-    }
-
     pub fn compile_op(
         &mut self,
         a: Value<'ctx>,
@@ -110,9 +91,16 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                                 Operator::Mult => {
                                     self.builder.build_int_mul(lhs_value, rhs_value, "mul")
                                 }
-                                Operator::FloorDiv => self
-                                    .builder
-                                    .build_int_exact_signed_div(lhs_value, rhs_value, "div"),
+                                Operator::Div => {
+                                    // FIXME, TODO: In Python, div int by int returns a float.
+                                    unimplemented!()
+                                }
+                                Operator::FloorDiv => {
+                                    self.builder.build_int_signed_div(lhs_value, rhs_value, "fld")
+                                }
+                                Operator::Mod => {
+                                    self.builder.build_int_signed_rem(lhs_value, rhs_value, "mod")
+                                }
                                 _ => panic!(
                                     "{:?}\nNotImplemented {:?} operator for i16",
                                     self.current_source_location, op
@@ -134,8 +122,15 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                                 Operator::Mult => {
                                     self.builder.build_float_mul(lhs_value, rhs_value, "mul")
                                 }
-                                Operator::FloorDiv => {
+                                Operator::Div => {
                                     self.builder.build_float_div(lhs_value, rhs_value, "div")
+                                }
+                                Operator::FloorDiv => {
+                                    // FIXME, TODO: In Python, floordiv float by float returns a int.
+                                    unimplemented!()
+                                }
+                                Operator::Mod => {
+                                    self.builder.build_float_rem(lhs_value, rhs_value, "mod")
                                 }
                                 _ => panic!(
                                     "{:?}\nNotImplemented {:?} operator for f32",

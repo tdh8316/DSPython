@@ -203,12 +203,12 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                     match iv.get_type().get_bit_width() {
                         8 => ValueType::I8,
                         16 => ValueType::I16,
-                        _ => unimplemented!(),
+                        _ => unreachable!(),
                     }
                 } else if bv.is_float_value() {
                     ValueType::F32
                 } else {
-                    unimplemented!()
+                    unreachable!()
                 },
                 bv,
             ),

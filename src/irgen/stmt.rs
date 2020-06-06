@@ -52,7 +52,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                     panic!("Variable unpacking is not implemented")
                 }
 
-                let target = targets.first().expect("No target provided");
+                let target = targets.first().unwrap();
                 let name = match &target.node {
                     ast::ExpressionType::Identifier { name } => name,
                     _ => panic!(
@@ -61,43 +61,26 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                     ),
                 };
 
+                let value = self.compile_expr(value);
+                let ty = value.get_type();
+
+                // TODO: Scope
                 if self.ctx.func {
-                    let value = self.compile_expr(value);
-                    let ty = value.get_type();
                     let p = self
                         .builder
                         .build_alloca(ty.to_basic_type(self.context), name);
                     self.builder.build_store(p, value.to_basic_value());
-                    self.variables.insert(name.to_string(), (ty, p));
-                } else {
-                    self.create_global(name, Some(value));
-                }
-            }
-            StatementType::AnnAssign {
-                target,
-                annotation: _,
-                value,
-            } => {
-                if let Some(value) = value {
-                    let name = match &target.node {
-                        ast::ExpressionType::Identifier { name } => name,
-                        _ => panic!(
-                            "{:?}\nUnsupported assign target {:?}",
-                            self.current_source_location, target.node
-                        ),
-                    };
 
-                    if self.ctx.func {
-                        let value = self.compile_expr(value);
-                        let ty = value.get_type();
-                        let p = self
-                            .builder
-                            .build_alloca(ty.to_basic_type(self.context), name);
-                        self.builder.build_store(p, value.to_basic_value());
-                        self.variables.insert(name.to_string(), (ty, p));
-                    } else {
-                        self.create_global(name, Some(value));
-                    }
+                    self.variables.insert(name.clone(), (ty, p));
+                } else {
+                    let global = self
+                        .module
+                        .add_global(ty.to_basic_type(self.context), None, name);
+                    global.set_unnamed_addr(true);
+                    global.set_initializer(&value.to_basic_value());
+                    let p = global.as_pointer_value();
+
+                    self.variables.insert(name.clone(), (ty, p));
                 }
             }
             StatementType::Return { value } => {
@@ -271,15 +254,6 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
         body: &Vec<ast::Statement>,
         orelse: Option<&Vec<ast::Statement>>,
     ) {
-        // TODO: Accept other cond type
-        /*if cond.get_type() != ValueType::Bool {
-            panic!(
-                "Expected {:?}, but got {:?} type.",
-                ValueType::Bool,
-                cond.get_type()
-            );
-        }*/
-
         let parent = self.fn_value();
 
         let then_bb = self.context.append_basic_block(parent, "then");
