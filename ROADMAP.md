@@ -34,7 +34,7 @@ This document outlines my roadmap to release DSP.
   - [ ] For
 
 # Arduino Features
-- [x] `Serial.begin` as `begin`
+- [x] `Serial.begin` as `serial_begin`
 - [x] `Serial.println` as `print`
 - [x] `digitalRead` as `digital_read`
 - [x] `digitalWrite` as `digital_write`

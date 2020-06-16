@@ -11,7 +11,7 @@ def delay(_milliseconds: int) -> None:
     ...
 
 
-def begin(_baudrate: int) -> None:
+def serial_begin(_baudrate: int) -> None:
     ...
 
 

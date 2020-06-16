@@ -12,7 +12,7 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
         None,
     );
     module.add_function(
-        "begin",
+        "serial_begin",
         context
             .void_type()
             .fn_type(&[context.i16_type().into()], false),
