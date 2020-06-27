@@ -80,6 +80,16 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             ValueHandler::new()
                 .handle_int(&|_, lhs_value| {
                     b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
+                        // Div operator to int returns a float.
+                        if op == &Operator::Div {
+                            return Value::F32 {
+                                value: self.builder.build_float_div(
+                                    lhs_value.const_signed_to_float(self.context.f32_type()),
+                                    rhs_value.const_signed_to_float(self.context.f32_type()),
+                                    "div",
+                                ),
+                            };
+                        }
                         Value::I16 {
                             value: match op {
                                 Operator::Add {} => {
@@ -92,15 +102,16 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                                     self.builder.build_int_mul(lhs_value, rhs_value, "mul")
                                 }
                                 Operator::Div => {
-                                    // FIXME, TODO: In Python, div int by int returns a float.
+                                    // In Python, dividing int by int returns a float,
+                                    // which is implemented above.
                                     unimplemented!()
                                 }
-                                Operator::FloorDiv => {
-                                    self.builder.build_int_signed_div(lhs_value, rhs_value, "fld")
-                                }
-                                Operator::Mod => {
-                                    self.builder.build_int_signed_rem(lhs_value, rhs_value, "mod")
-                                }
+                                Operator::FloorDiv => self
+                                    .builder
+                                    .build_int_signed_div(lhs_value, rhs_value, "fld"),
+                                Operator::Mod => self
+                                    .builder
+                                    .build_int_signed_rem(lhs_value, rhs_value, "mod"),
                                 _ => panic!(
                                     "{:?}\nNotImplemented {:?} operator for i16",
                                     self.current_source_location, op
@@ -110,8 +121,13 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     }))
                 })
                 .handle_float(&|_, lhs_value| {
-                    b.invoke_handler(
-                        ValueHandler::new().handle_float(&|_, rhs_value| Value::F32 {
+                    b.invoke_handler(ValueHandler::new().handle_float(&|_, rhs_value| {
+                        // FloorDiv operator to float returns an int.
+                        if op == &Operator::FloorDiv {
+                            // TODO
+                            unimplemented!()
+                        }
+                        Value::F32 {
                             value: match op {
                                 Operator::Add {} => {
                                     self.builder.build_float_add(lhs_value, rhs_value, "add")
@@ -126,7 +142,8 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                                     self.builder.build_float_div(lhs_value, rhs_value, "div")
                                 }
                                 Operator::FloorDiv => {
-                                    // FIXME, TODO: In Python, floordiv float by float returns a int.
+                                    // In Python, floordiv float by float returns a int,
+                                    // which is implemented above.
                                     unimplemented!()
                                 }
                                 Operator::Mod => {
@@ -137,8 +154,8 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                                     self.current_source_location, op
                                 ),
                             },
-                        }),
-                    )
+                        }
+                    }))
                 }),
         )
     }
