@@ -4,7 +4,6 @@ $ linker.py ARDUINO_DIR LLVM_ASSEMBLY
 """
 
 import os
-import shutil
 import sys
 
 ARDUINO_DIR = sys.argv[1]
@@ -17,7 +16,7 @@ OBJ_COPY = "{ARDUINO_DIR}/hardware/tools/avr/bin/avr-objcopy".format(
 )
 AVRDUDE = "{0}/hardware/tools/avr/bin/avrdude".format(ARDUINO_DIR)
 
-if not os.path.isdir(ARDUINO_DIR) or shutil.which(CC):
+if not os.path.isdir(ARDUINO_DIR):
     raise FileNotFoundError("Please set your arduino software directory correctly.")
 
 F_CPU = 16000000
