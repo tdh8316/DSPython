@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::BasicValue;
 use inkwell::{FloatPredicate, IntPredicate};
@@ -64,14 +66,15 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                 let value = self.compile_expr(value);
                 let ty = value.get_type();
 
-                // TODO: Scope
-                if self.ctx.func {
+                if self.fn_value_opt.is_some() {
                     let p = self
                         .builder
                         .build_alloca(ty.to_basic_type(self.context), name);
                     self.builder.build_store(p, value.to_basic_value());
 
-                    self.variables.insert(name.clone(), (ty, p));
+                    // self.variables.insert(name.clone(), (ty, p));
+                    let mut hash = self.fn_scope.get(&self.fn_value()).unwrap().clone();
+                    hash.insert(name.clone(), (ty, p));
                 } else {
                     let global = self
                         .module
@@ -85,7 +88,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
             }
             StatementType::Return { value } => {
                 self.ctx.ret = true;
-                if !self.ctx.func {
+                if self.fn_value_opt.is_none() {
                     panic!(
                         "{:?}\n'return' outside function",
                         self.current_source_location
@@ -232,20 +235,18 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                 .insert(arg_names[i].to_string(), (v.get_type(), pointer));
         }
 
-        self.ctx.func = true;
         self.fn_value_opt = Some(f);
+        self.fn_scope.insert(self.fn_value(), HashMap::new());
 
         for statement in body.iter() {
             self.compile_stmt(statement);
         }
 
-        if !self.ctx.ret {
+        if f.get_type().get_return_type().is_none() && bb.get_terminator().is_none() {
             self.builder.build_return(None);
         }
 
-        // self.compile_expr(returns.as_ref().unwrap());
-
-        self.ctx.func = false;
+        self.fn_value_opt = None;
     }
 
     fn compile_stmt_conditional(

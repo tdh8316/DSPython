@@ -41,7 +41,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
             },
             ExpressionType::String { value } => {
                 let v = try_get_constant_string(value).unwrap();
-                if self.ctx.func {
+                if self.fn_value_opt.is_some() {
                     Value::Str {
                         value: self
                             .builder

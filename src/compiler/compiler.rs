@@ -15,8 +15,6 @@ use crate::value::{Value, ValueHandler, ValueType};
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct CompileContext {
     pub in_loop: bool,
-    pub func: bool,
-    pub ret: bool,
 }
 
 #[derive(Debug)]
@@ -30,6 +28,8 @@ pub struct Compiler<'a, 'ctx> {
     pub(crate) ctx: CompileContext,
     pub(crate) variables: HashMap<String, (ValueType, PointerValue<'ctx>)>,
     pub(crate) fn_value_opt: Option<FunctionValue<'ctx>>,
+    pub(crate) fn_scope:
+        HashMap<FunctionValue<'ctx>, HashMap<String, (ValueType, PointerValue<'ctx>)>>,
 }
 
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
@@ -42,16 +42,13 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         Compiler {
             source_path,
             current_source_location: ast::Location::default(),
-            ctx: CompileContext {
-                in_loop: false,
-                func: false,
-                ret: false,
-            },
+            ctx: CompileContext { in_loop: false },
             context,
             builder,
             module,
             variables: HashMap::new(),
             fn_value_opt: None,
+            fn_scope: HashMap::new(),
         }
     }
 
