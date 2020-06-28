@@ -67,15 +67,44 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                 self.compile_op(a, op, b)
             }
             ExpressionType::Identifier { name } => {
-                let (ty, pointer) = self.variables.get(name).expect(
-                    format!(
-                        "{:?}\nName '{}' is not defined",
-                        self.current_source_location, name
-                    )
-                    .as_str(),
-                );
-                match *pointer {
-                    var => Value::from_basic_value(*ty, self.builder.build_load(var, name).into()),
+                if self.fn_value_opt.is_none() {
+                    let (ty, pointer) = self.variables.get(name).expect(
+                        format!(
+                            "{:?}\nName '{}' is not defined",
+                            self.current_source_location, name
+                        )
+                        .as_str(),
+                    );
+                    match *pointer {
+                        var => {
+                            Value::from_basic_value(*ty, self.builder.build_load(var, name).into())
+                        }
+                    }
+                } else {
+                    let getter = self.fn_scope.get(&self.fn_value()).unwrap().get(name);
+                    if getter.is_none() {
+                        let (ty, pointer) = self.variables.get(name).expect(
+                            format!(
+                                "{:?}\nName '{}' is not defined",
+                                self.current_source_location, name
+                            )
+                            .as_str(),
+                        );
+                        match *pointer {
+                            var => Value::from_basic_value(
+                                *ty,
+                                self.builder.build_load(var, name).into(),
+                            ),
+                        }
+                    } else {
+                        let (ty, pointer) = getter.unwrap();
+                        match *pointer {
+                            var => Value::from_basic_value(
+                                *ty,
+                                self.builder.build_load(var, name).into(),
+                            ),
+                        }
+                    }
                 }
             }
             ExpressionType::Compare { vals, ops } => self.compile_comparison(vals, ops),

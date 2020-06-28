@@ -73,8 +73,10 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                     self.builder.build_store(p, value.to_basic_value());
 
                     // self.variables.insert(name.clone(), (ty, p));
-                    let mut hash = self.fn_scope.get(&self.fn_value()).unwrap().clone();
-                    hash.insert(name.clone(), (ty, p));
+                    self.fn_scope
+                        .get_mut(&self.fn_value())
+                        .unwrap()
+                        .insert(name.clone(), (ty, p));
                 } else {
                     let global = self
                         .module
@@ -87,7 +89,6 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                 }
             }
             StatementType::Return { value } => {
-                self.ctx.ret = true;
                 if self.fn_value_opt.is_none() {
                     panic!(
                         "{:?}\n'return' outside function",
@@ -171,7 +172,6 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
             }
         }
 
-        self.ctx.ret = false;
         let mut return_type = &String::new();
         if let Some(annotation) = returns {
             match &annotation.node {
