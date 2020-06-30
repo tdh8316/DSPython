@@ -1,6 +1,6 @@
 """
 Generate linked object file
-$ linker.py ARDUINO_DIR LLVM_ASSEMBLY
+$ builder.py ARDUINO_DIR LLVM_ASSEMBLY
 """
 
 import os
@@ -40,13 +40,22 @@ INCLUDE_FILES = (
 # library sources
 LIBRARY_DIR = "{}/hardware/arduino/avr/cores/arduino/".format(ARDUINO_DIR)
 
+if not (
+    os.path.isfile(CC)
+    or os.path.isfile(CPP)
+    or os.path.isfile(AR)
+    or os.path.isfile(OBJ_COPY)
+    or os.path.isfile(AVRDUDE)
+):
+    raise ModuleNotFoundError("Arduino compiler not found!")
+
+if not (os.path.isdir(LIBRARY_DIR)):
+    raise ModuleNotFoundError("Arduino library not found!")
+
 OUT_PREFIX = "arduino_build/"
 
 if not os.path.isdir(OUT_PREFIX):
-    try:
-        os.makedirs(OUT_PREFIX)
-    except Exception as e:
-        raise e
+    os.makedirs(OUT_PREFIX)
 
 compile_commands = """
 llc -filetype=obj {INPUT} -o {INPUT}.o
@@ -127,6 +136,7 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 for command in compile_commands.splitlines():
     code: int = os.system(command)
     if code != 0:
+        print("FATAL: Failed to execute command '{}'".format(command))
         sys.exit(1)
 
 os.remove("{INPUT}.elf".format(INPUT=sys.argv[2]))

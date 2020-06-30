@@ -124,14 +124,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         panic!(format!("Unknown command '{}'", command));
     }
 
-    // Build assembly from python file and return it
+    // Build assembly from python file
     let assembly = build(file, no_opt);
 
     // Linker path
     let linker = if cfg!(debug_assertions) {
-        "python builder/linker.py"
+        "python builder/builder.py"
     } else {
-        "bin/linker"
+        "bin/builder"
     };
 
     // Execute the linker command
@@ -147,7 +147,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .expect("Failed to execute command")
     };
     if !out.success() {
-        panic!("Failed to perform linker.");
+        panic!("Failed to perform builder.");
     }
 
     if command == "flash" || command == "upload" {
