@@ -17,7 +17,6 @@ core.a
 
 ### Example tests ###
 /examples/*.py.*
-/tests/*.ll
 
 ### Arduino core ###
 /include/extra/
