@@ -245,7 +245,9 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                 .builder
                 .build_alloca(v.get_type().to_basic_type(self.context), arg_names[i]);
             self.builder.build_store(pointer, bv);
-            self.variables
+            self.fn_scope
+                .get_mut(&self.fn_value())
+                .unwrap()
                 .insert(arg_names[i].to_string(), (v.get_type(), pointer));
         }
 
