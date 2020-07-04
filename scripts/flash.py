@@ -15,7 +15,7 @@ if not os.path.isdir(ARDUINO_DIR):
 
 AVRDUDE = "{0}/hardware/tools/avr/bin/avrdude".format(ARDUINO_DIR)
 
-if not os.path.isfile(AVRDUDE):
+if False:
     raise ModuleNotFoundError("avrdude not found!")
 
 command = (

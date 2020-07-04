@@ -40,13 +40,7 @@ INCLUDE_FILES = (
 # library sources
 LIBRARY_DIR = "{}/hardware/arduino/avr/cores/arduino/".format(ARDUINO_DIR)
 
-if not (
-    os.path.isfile(CC)
-    or os.path.isfile(CPP)
-    or os.path.isfile(AR)
-    or os.path.isfile(OBJ_COPY)
-    or os.path.isfile(AVRDUDE)
-):
+if False:
     raise ModuleNotFoundError("Arduino compiler not found!")
 
 if not (os.path.isdir(LIBRARY_DIR)):
