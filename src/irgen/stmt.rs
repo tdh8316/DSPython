@@ -24,6 +24,12 @@ pub trait CGStmt<'a, 'ctx> {
         body: &Vec<ast::Statement>,
         orelse: Option<&Vec<ast::Statement>>,
     );
+    fn compile_stmt_while(
+        &mut self,
+        test: &ast::Expression,
+        body: &ast::Suite,
+        orelse: &Option<ast::Suite>,
+    );
 }
 
 impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
@@ -67,9 +73,14 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                 let ty = value.get_type();
 
                 if self.fn_value_opt.is_some() {
-                    let p = self
-                        .builder
-                        .build_alloca(ty.to_basic_type(self.context), name);
+                    let old_var = self.fn_scope.get(&self.fn_value()).unwrap().get(name);
+
+                    let p = if old_var.is_none() {
+                        self.builder
+                            .build_alloca(ty.to_basic_type(self.context), name)
+                    } else {
+                        old_var.unwrap().to_owned().1
+                    };
                     self.builder.build_store(p, value.to_basic_value());
 
                     // self.variables.insert(name.clone(), (ty, p));
@@ -132,6 +143,9 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                         self.compile_stmt_conditional(cond, body, Some(statements));
                     }
                 }
+            }
+            StatementType::While { test, body, orelse } => {
+                self.compile_stmt_while(test, body, orelse);
             }
             StatementType::Pass => { /* Pass */ }
             _ => panic!(
@@ -356,5 +370,113 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
         let _else_bb = self.builder.get_insert_block().unwrap();
 
         self.builder.position_at_end(cont_bb);
+    }
+
+    fn compile_stmt_while(
+        &mut self,
+        test: &ast::Expression,
+        body: &ast::Suite,
+        orelse: &Option<ast::Suite>,
+    ) {
+        let parent = self.fn_value();
+
+        let loop_bb = self.context.append_basic_block(parent, "while.body");
+        let else_bb = self.context.append_basic_block(parent, "while.else");
+        let after_bb = self.context.append_basic_block(parent, "while.after");
+
+        let while_bb = self.context.append_basic_block(parent, "while");
+        self.builder.build_unconditional_branch(while_bb);
+        self.builder.position_at_end(while_bb);
+
+        let start = self.compile_expr(test);
+        let cond = start.invoke_handler(
+            ValueHandler::new()
+                .handle_bool(&|_, value| value)
+                // In Python, all integers except 0 are considered true.
+                .handle_int(&|value, _| {
+                    let a = value;
+                    let b = Value::I16 {
+                        value: self.context.i16_type().const_zero(),
+                    };
+
+                    // This LLVM expression is same as `lhs_value != 0`
+                    // Therefore all integers except 0 are considered true.
+                    let c = a.invoke_handler(
+                        ValueHandler::new()
+                            .handle_int(&|_, lhs_value| {
+                                b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
+                                    Value::Bool {
+                                        value: self.builder.build_int_compare(
+                                            IntPredicate::NE,
+                                            lhs_value,
+                                            rhs_value,
+                                            "a",
+                                        ),
+                                    }
+                                }))
+                            })
+                            .handle_float(&|_, lhs_value| {
+                                b.invoke_handler(ValueHandler::new().handle_float(
+                                    &|_, rhs_value| Value::Bool {
+                                        value: self.builder.build_float_compare(
+                                            FloatPredicate::ONE,
+                                            lhs_value,
+                                            rhs_value,
+                                            "a",
+                                        ),
+                                    },
+                                ))
+                            }),
+                    );
+
+                    c.invoke_handler(ValueHandler::new().handle_bool(&|_, value| value))
+                })
+                // In Python, all float numbers except 0.0 are considered true.
+                .handle_float(&|value, _| {
+                    let a = value;
+                    let b = Value::F32 {
+                        value: self.context.f32_type().const_zero(),
+                    };
+
+                    // This LLVM expression is same as `lhs_value != 0.0`
+                    // Therefore all float numbers except 0 are considered true.
+                    let c = a.invoke_handler(ValueHandler::new().handle_float(&|_, lhs_value| {
+                        b.invoke_handler(ValueHandler::new().handle_float(&|_, rhs_value| {
+                            Value::Bool {
+                                value: self.builder.build_float_compare(
+                                    FloatPredicate::ONE,
+                                    lhs_value,
+                                    rhs_value,
+                                    "a",
+                                ),
+                            }
+                        }))
+                    }));
+
+                    c.invoke_handler(ValueHandler::new().handle_bool(&|_, value| value))
+                }),
+        );
+
+        self.builder
+            .build_conditional_branch(cond, loop_bb, else_bb);
+        self.builder.position_at_end(loop_bb);
+        for statement in body.iter() {
+            self.compile_stmt(statement);
+        }
+        self.builder
+            .build_conditional_branch(cond, while_bb, else_bb);
+
+        self.builder.position_at_end(else_bb);
+        match orelse {
+            Some(statements) => {
+                for statement in statements.iter() {
+                    self.compile_stmt(statement);
+                }
+            }
+            None => {}
+        }
+
+        self.builder.build_unconditional_branch(after_bb);
+        self.builder.position_at_end(after_bb);
     }
 }
