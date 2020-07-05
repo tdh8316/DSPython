@@ -14,9 +14,9 @@ pub trait CGStmt<'a, 'ctx> {
   fn compile_stmt_function_def(
     &mut self,
     name: &String,
-    _args: &Box<ast::Parameters>,
+    args: &Box<ast::Parameters>,
     body: &ast::Suite,
-    _returns: &Option<ast::Expression>,
+    returns: &Option<ast::Expression>,
   );
   fn compile_stmt_conditional(
     &mut self,
