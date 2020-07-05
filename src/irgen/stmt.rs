@@ -7,7 +7,7 @@ use rustpython_parser::ast;
 
 use crate::compiler::Compiler;
 use crate::irgen::expr::CGExpr;
-use crate::value::{Value, ValueHandler};
+use crate::value::{Value, ValueHandler, ValueType};
 
 pub trait CGStmt<'a, 'ctx> {
     fn compile_stmt(&mut self, stmt: &ast::Statement);
@@ -110,11 +110,35 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                     self.builder.build_return(None);
                 } else {
                     let return_value = self.compile_expr(value.as_ref().unwrap());
+
+                    if return_value.get_type() == ValueType::Void {
+                        self.builder.build_return(None);
+                        return;
+                    }
+
+                    // Type check
+                    let fn_type =
+                        self.fn_value()
+                            .get_type()
+                            .get_return_type()
+                            .unwrap_or_else(|| {
+                                panic!(
+                                    "{:?}\nCannot return value without function type",
+                                    self.current_source_location
+                                )
+                            });
+                    let value_type = return_value.to_basic_value().get_type();
+                    if fn_type != value_type {
+                        panic!(
+                            "{:?}\nExpected {:?} type, but {:?}.",
+                            self.current_source_location, fn_type, value_type
+                        )
+                    }
+
                     return_value.invoke_handler(
                         ValueHandler::new()
                             .handle_int(&|_, value| self.builder.build_return(Some(&value)))
-                            .handle_float(&|_, value| self.builder.build_return(Some(&value)))
-                            .handle_void(&|_| self.builder.build_return(None)),
+                            .handle_float(&|_, value| self.builder.build_return(Some(&value))),
                     );
                 }
             }
@@ -192,6 +216,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                 ast::ExpressionType::Identifier { name } => {
                     return_type = name;
                 }
+                ast::ExpressionType::None => {}
                 _ => {
                     panic!("Unknown return annotation node");
                 }
@@ -226,21 +251,23 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
 
         self.builder.position_at_end(bb);
 
+        self.fn_value_opt = Some(f);
+        self.fn_scope.insert(self.fn_value(), HashMap::new());
+
         for (i, bv) in f.get_param_iter().enumerate() {
-            let v;
-            if bv.is_int_value() {
+            let v = if bv.is_int_value() {
                 bv.into_int_value().set_name(arg_names[i]);
-                v = Value::I16 {
+                Value::I16 {
                     value: bv.into_int_value(),
                 }
             } else if bv.is_float_value() {
                 bv.into_float_value().set_name(arg_names[i]);
-                v = Value::F32 {
+                Value::F32 {
                     value: bv.into_float_value(),
                 }
             } else {
                 panic!("NotImplemented function argument type")
-            }
+            };
             let pointer = self
                 .builder
                 .build_alloca(v.get_type().to_basic_type(self.context), arg_names[i]);
@@ -250,9 +277,6 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                 .unwrap()
                 .insert(arg_names[i].to_string(), (v.get_type(), pointer));
         }
-
-        self.fn_value_opt = Some(f);
-        self.fn_scope.insert(self.fn_value(), HashMap::new());
 
         for statement in body.iter() {
             self.compile_stmt(statement);

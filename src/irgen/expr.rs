@@ -141,6 +141,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                 },
                 _ => panic!("NotImplemented type for unop"),
             },
+            ExpressionType::Ellipsis => panic!("Constant value Ellipsis is not implemented."),
             _ => {
                 panic!(
                     "{:?}\nNotImplemented expression {:?}",
@@ -189,10 +190,10 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
         for (i, expr_proto) in args.iter().zip(args_proto.iter()).enumerate() {
             let expr = expr_proto.0;
             let proto = expr_proto.1;
-            let value = if i == 1 {
-                self.compile_expr(expr)
-            } else {
+            let value = if i == 0 {
                 first_arg
+            } else {
+                self.compile_expr(expr)
             };
             match value {
                 Value::I8 { value } => {
