@@ -23,7 +23,7 @@ pub struct Compiler<'a, 'ctx> {
     pub builder: &'a Builder<'ctx>,
     pub module: &'a Module<'ctx>,
 
-    source_path: String,
+    pub(crate) source_path: String,
     pub(crate) current_source_location: ast::Location,
     pub(crate) ctx: CompileContext,
     pub(crate) variables: HashMap<String, (ValueType, PointerValue<'ctx>)>,

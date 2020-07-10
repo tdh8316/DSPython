@@ -2,6 +2,7 @@ use either::Either;
 use inkwell::values::BasicValueEnum;
 use rustpython_parser::ast;
 
+use crate::compiler::error::{CompilerErrorReport, CompilerErrorType};
 use crate::compiler::mangle::mangling;
 use crate::compiler::Compiler;
 use crate::value::convert::{truncate_bigint_to_u64, try_get_constant_string};
@@ -68,13 +69,10 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
             }
             ExpressionType::Identifier { name } => {
                 if self.fn_value_opt.is_none() {
-                    let (ty, pointer) = self.variables.get(name).expect(
-                        format!(
-                            "{:?}\nName '{}' is not defined",
-                            self.current_source_location, name
-                        )
-                        .as_str(),
-                    );
+                    let (ty, pointer) = match self.variables.get(name) {
+                        Some(tuple) => tuple,
+                        None => panic!(self.errs(CompilerErrorType::NameError(name))),
+                    };
                     match *pointer {
                         var => {
                             Value::from_basic_value(*ty, self.builder.build_load(var, name).into())
@@ -83,13 +81,10 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for Compiler<'a, 'ctx> {
                 } else {
                     let getter = self.fn_scope.get(&self.fn_value()).unwrap().get(name);
                     if getter.is_none() {
-                        let (ty, pointer) = self.variables.get(name).expect(
-                            format!(
-                                "{:?}\nName '{}' is not defined",
-                                self.current_source_location, name
-                            )
-                            .as_str(),
-                        );
+                        let (ty, pointer) = match self.variables.get(name) {
+                            Some(tuple) => tuple,
+                            None => panic!(self.errs(CompilerErrorType::NameError(name))),
+                        };
                         match *pointer {
                             var => Value::from_basic_value(
                                 *ty,

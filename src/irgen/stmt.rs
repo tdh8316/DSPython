@@ -406,11 +406,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
     ) {
         let parent = self.fn_value();
 
+        let while_bb = self.context.append_basic_block(parent, "while");
         let loop_bb = self.context.append_basic_block(parent, "while.body");
         let else_bb = self.context.append_basic_block(parent, "while.else");
         let after_bb = self.context.append_basic_block(parent, "while.after");
 
-        let while_bb = self.context.append_basic_block(parent, "while");
         self.builder.build_unconditional_branch(while_bb);
         self.builder.position_at_end(while_bb);
 
