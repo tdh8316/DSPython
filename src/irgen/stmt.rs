@@ -297,9 +297,9 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
     ) {
         let parent = self.fn_value();
 
-        let then_bb = self.context.append_basic_block(parent, "then");
-        let else_bb = self.context.append_basic_block(parent, "else");
-        let cont_bb = self.context.append_basic_block(parent, "cont");
+        let cond_bb = self.context.append_basic_block(parent, "if.cond");
+        let then_bb = self.context.append_basic_block(parent, "if.then");
+        let else_bb = self.context.append_basic_block(parent, "if.else");
 
         let cond = cond.invoke_handler(
             ValueHandler::new()
@@ -376,7 +376,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
         for statement in body.iter() {
             self.compile_stmt(statement);
         }
-        self.builder.build_unconditional_branch(cont_bb);
+        self.builder.build_unconditional_branch(cond_bb);
 
         let _then_bb = self.builder.get_insert_block().unwrap();
 
@@ -391,11 +391,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
             None => {}
         }
 
-        self.builder.build_unconditional_branch(cont_bb);
+        self.builder.build_unconditional_branch(cond_bb);
 
         let _else_bb = self.builder.get_insert_block().unwrap();
 
-        self.builder.position_at_end(cont_bb);
+        self.builder.position_at_end(cond_bb);
     }
 
     fn compile_stmt_while(
@@ -406,7 +406,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
     ) {
         let parent = self.fn_value();
 
-        let while_bb = self.context.append_basic_block(parent, "while");
+        let while_bb = self.context.append_basic_block(parent, "while.cond");
         let loop_bb = self.context.append_basic_block(parent, "while.body");
         let else_bb = self.context.append_basic_block(parent, "while.else");
         let after_bb = self.context.append_basic_block(parent, "while.after");
