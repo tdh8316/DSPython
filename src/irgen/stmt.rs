@@ -160,13 +160,13 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for Compiler<'a, 'ctx> {
                 let cond = self.compile_expr(test);
 
                 match orelse {
-            None /*Only if:*/ => {
-                self.compile_stmt_conditional(cond, body, None);
-            }
-            Some(statements) => {
-                self.compile_stmt_conditional(cond, body, Some(statements));
-            }
-        }
+                    None /*Only if:*/ => {
+                        self.compile_stmt_conditional(cond, body, None);
+                    }
+                    Some(statements) => {
+                        self.compile_stmt_conditional(cond, body, Some(statements));
+                    }
+                }
             }
             StatementType::While { test, body, orelse } => {
                 self.compile_stmt_while(test, body, orelse);

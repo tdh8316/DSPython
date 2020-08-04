@@ -179,6 +179,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
                         let int_predicate = match ops.first().unwrap() {
                             ast::Comparison::Equal => IntPredicate::EQ,
+                            ast::Comparison::NotEqual => IntPredicate::NE,
                             _ => panic!("Unsupported int predicate"),
                         };
                         Value::Bool {
