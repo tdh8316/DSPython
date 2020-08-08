@@ -162,11 +162,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         vals: &[ast::Expression],
         ops: &[ast::Comparison],
     ) -> Value<'ctx> {
-        if ops.len() > 1 {
-            panic!("Chained comparison is not implemented.")
-        }
-
-        if vals.len() > 2 {
+        if ops.len() > 1 || vals.len() > 2 {
             panic!("Chained comparison is not implemented.")
         }
 
@@ -180,6 +176,8 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                         let int_predicate = match ops.first().unwrap() {
                             ast::Comparison::Equal => IntPredicate::EQ,
                             ast::Comparison::NotEqual => IntPredicate::NE,
+                            ast::Comparison::Greater => IntPredicate::SGT,
+                            ast::Comparison::Less => IntPredicate::SLT,
                             _ => panic!("Unsupported int predicate"),
                         };
                         Value::Bool {
@@ -196,6 +194,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     b.invoke_handler(ValueHandler::new().handle_float(&|_, rhs_value| {
                         let float_predicate = match ops.first().unwrap() {
                             ast::Comparison::Equal => FloatPredicate::OEQ,
+                            ast::Comparison::NotEqual => FloatPredicate::ONE,
+                            ast::Comparison::Greater => FloatPredicate::OGT,
+                            ast::Comparison::Less => FloatPredicate::OLT,
                             _ => panic!("Unsupported float predicate"),
                         };
                         Value::Bool {

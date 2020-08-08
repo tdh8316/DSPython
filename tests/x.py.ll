@@ -3,9 +3,6 @@ source_filename = "tests/x.py"
 target datalayout = "e-P1-p:16:8-i8:8-i16:8-i32:8-i64:8-f32:8-f64:8-n8-a:8"
 target triple = "avr"
 
-@.str = private unnamed_addr constant [7 x i8] c"Low...\00", align 1
-@.str.1 = private unnamed_addr constant [16 x i8] c"Finally High!!!\00", align 1
-
 declare void @pin_mode(i8, i8) addrspace(1)
 
 declare void @serial_begin(i16) addrspace(1)
@@ -37,22 +34,24 @@ define void @setup() addrspace(1) {
 }
 
 define void @loop() addrspace(1) {
-  %call = tail call addrspace(1) i16 @digital_read(i8 9)
-  %volt = alloca i16
-  store i16 %call, i16* %volt
+  %count = alloca i16
+  store i16 0, i16* %count
   br label %while.cond
 
 while.cond:                                       ; preds = %while.body, %0
-  %volt1 = load i16, i16* %volt
-  %a = icmp ne i16 %volt1, 1
+  %count1 = load i16, i16* %count
+  %a = icmp slt i16 %count1, 10
   br i1 %a, label %while.body, label %while.else
 
 while.body:                                       ; preds = %while.cond
-  tail call addrspace(1) void @print__s__(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str, i32 0, i32 0))
+  %count2 = load i16, i16* %count
+  tail call addrspace(1) void @print__i__(i16 %count2)
+  %count3 = load i16, i16* %count
+  %add = add i16 %count3, 1
+  store i16 %add, i16* %count
   br i1 %a, label %while.cond, label %while.else
 
 while.else:                                       ; preds = %while.body, %while.cond
-  tail call addrspace(1) void @print__s__(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str.1, i32 0, i32 0))
   br label %while.after
 
 while.after:                                      ; preds = %while.else

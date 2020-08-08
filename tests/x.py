@@ -8,11 +8,10 @@ def setup():
 
 
 def loop() -> None:
-    volt = digital_read(9)
+    count = 0
 
-    while volt != 1:
-        print("Low...")
-    else:
-        print("Finally High!!!")
+    while count < 10:
+        print(count)
+        count = count + 1
 
     return None

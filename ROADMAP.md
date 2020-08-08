@@ -16,11 +16,11 @@ This document outlines my roadmap to release DSP.
     - [ ] Add
   - Comparison operators
     - [x] `==`
-    - [ ] `<`
-    - [ ] `>`
+    - [x] `<`
+    - [x] `>`
     - [ ] `<=`
     - [ ] `>=`
-    - [ ] `!=`
+    - [x] `!=`
 - [x] Define functions
   - [x] Arguments
   - [ ] Variable arguments
@@ -30,7 +30,7 @@ This document outlines my roadmap to release DSP.
     - [x] Integer
     - [x] Float
 - [ ] Loop
-  - [ ] While
+  - [x] While
   - [ ] For
 
 # Arduino Features
@@ -43,3 +43,4 @@ This document outlines my roadmap to release DSP.
 # Python builtins callable
 - [x] `print`
 - [x] `int`
+- [x] `float`
