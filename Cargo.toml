@@ -1,14 +1,17 @@
+[workspace]
+members = ["compiler", "python"]
+
 [package]
-name = "dsp"
-version = "0.1.1-dev"
+name = "dspython"
+version = "0.1.0"
 authors = ["탁동혁 <tdh8316@naver.com>"]
 edition = "2018"
+description = "Damn Small Python compiler"
+license = "MIT"
+repository = "https://github.com/tdh8316/dspython"
 
 [dependencies]
 clap = { git = "https://github.com/clap-rs/clap", tag = "v2.33.0" }
-either = "1.5.3"
-inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm10-0" }
-num-bigint = "0.2"
-num-complex = { version = "0.2", features = ["serde"] }
-num-traits = "0.2"
-rustpython-parser = { git = "https://github.com/RustPython/RustPython" }
+dsp_compiler = { path="./compiler" }
+dsp_python_codegen = { path ="./python/codegen" }
+dsp_python_parser = { path ="./python/parser" }

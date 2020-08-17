@@ -1,0 +1,14 @@
+[package]
+name = "dsp_compiler"
+version = "0.1.0"
+authors = ["탁동혁 <tdh8316@naver.com>"]
+edition = "2018"
+description = "DSPython compiler"
+license = "MIT"
+repository = "https://github.com/tdh8316/dspython"
+
+[dependencies]
+dsp_compiler_error = { path = "./error" }
+dsp_python_codegen = { path ="../python/codegen" }
+dsp_python_parser = { path ="../python/parser" }
+inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm10-0" }

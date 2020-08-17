@@ -7,7 +7,7 @@
 ### Rust ###
 /target/
 
-### DSP and compiler outputs ###
+### DSPython and compiler outputs ###
 *.o
 *.d
 *.eep
@@ -17,6 +17,3 @@ core.a
 
 ### Example tests ###
 /examples/*.py.*
-
-### Arduino core ###
-/include/extra/
