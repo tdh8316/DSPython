@@ -4,13 +4,13 @@ use inkwell::types::BasicTypeEnum;
 use inkwell::values::BasicValue;
 use inkwell::{FloatPredicate, IntPredicate};
 
-use dsp_compiler_error::*;
 use dsp_compiler_value::value::{Value, ValueHandler, ValueType};
 use dsp_python_parser::ast;
 
 use crate::cgexpr::CGExpr;
 use crate::scope::LLVMVariableAccessor;
 use crate::CodeGen;
+use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
 
 pub trait CGStmt<'a, 'ctx> {
     fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError>;
@@ -40,23 +40,45 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         self.set_source_location(stmt.location);
         use dsp_python_parser::ast::StatementType;
         match &stmt.node {
+            StatementType::Expression { expression } => {
+                self.compile_expr(expression)?;
+                Ok(())
+            }
+            StatementType::FunctionDef {
+                is_async,
+                name,
+                args,
+                body,
+                decorator_list,
+                returns,
+            } => {
+                if *is_async {
+                    panic!(
+                        "{:?}\nAsync function is not supported",
+                        self.get_source_location()
+                    )
+                }
+                let _decorators = decorator_list;
+                self.compile_stmt_function_def(name, args, body, returns)?;
+                Ok(())
+            }
             StatementType::Assign { targets, value } => {
                 if targets.len() > 1 {
-                    return Err(LLVMCompileError::new(
-                        self.get_source_location(),
-                        LLVMCompileErrorType::NotImplemented(Some(
-                            "Variable unpacking is not implemented.".to_string(),
-                        )),
-                    ));
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::NotImplemented,
+                        "Variable unpacking is not implemented."
+                    );
                 }
                 let target = targets.last().unwrap();
                 let name = match &target.node {
                     ast::ExpressionType::Identifier { name } => name,
                     _ => {
-                        return Err(LLVMCompileError::new(
-                            self.get_source_location(),
-                            LLVMCompileErrorType::NotImplemented(None),
-                        ))
+                        return err!(
+                            self,
+                            LLVMCompileErrorType::NotImplemented,
+                            "Failed to get assignee."
+                        );
                     }
                 };
                 let value = self.compile_expr(value)?;
@@ -86,10 +108,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
             StatementType::Return { value } => {
                 // Outside function
                 if self.get_fn_value().is_none() {
-                    return Err(LLVMCompileError::new(
-                        self.get_source_location(),
-                        LLVMCompileErrorType::SyntaxError("'return' outside function".to_string()),
-                    ));
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::SyntaxError,
+                        "'return' outside function"
+                    );
                 }
                 if let Some(value) = value {
                     let return_value = self.compile_expr(value)?;
@@ -106,13 +129,12 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                             .unwrap();
                         let value_type = return_value.to_basic_value().get_type();
                         if fn_type != value_type {
-                            return Err(LLVMCompileError::new(
-                                self.get_source_location(),
-                                LLVMCompileErrorType::TypeError(
-                                    format!("{:?}", fn_type),
-                                    format!("{:?}", value_type),
-                                ),
-                            ));
+                            return err!(
+                                self,
+                                LLVMCompileErrorType::TypeError,
+                                format!("{:?}", fn_type),
+                                format!("{:?}", value_type)
+                            );
                         }
 
                         return_value.invoke_handler(
@@ -137,12 +159,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 if target.clone() == String::from("uno") {
                     // Do nothing
                 } else {
-                    return Err(LLVMCompileError::new(
-                        self.get_source_location(),
-                        LLVMCompileErrorType::NotImplemented(Some(
-                            "Import is not implemented".to_string(),
-                        )),
-                    ));
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::NotImplemented,
+                        "Import is not implemented."
+                    );
                 }
                 Ok(())
             }
@@ -163,10 +184,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 self.compile_stmt_while(test, body, orelse)?;
                 Ok(())
             }
-            _ => Err(LLVMCompileError::new(
-                self.get_source_location(),
-                LLVMCompileErrorType::NotImplemented(Some(format!("{:?}", stmt))),
-            )),
+            _ => err!(
+                self,
+                LLVMCompileErrorType::NotImplemented,
+                format!("{:?}", stmt)
+            ),
         }
     }
 
@@ -183,7 +205,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         for arg in args.args.iter() {
             arg_names.push(&arg.arg);
             if arg.annotation.is_none() {
-                panic!("You must provide type hint for args");
+                return err!(
+                    self,
+                    LLVMCompileErrorType::SyntaxError,
+                    "You must provide type hint for arguments"
+                );
             }
             let arg_type;
             match &arg.annotation.as_ref().unwrap().node {
@@ -191,13 +217,23 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                     arg_type = name;
                 }
                 _ => {
-                    panic!("Unknown return annotation node");
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::NotImplemented,
+                        "Unrecognizable type"
+                    );
                 }
             }
             match arg_type.as_str() {
                 "int" => args_vec.push(self.context.i16_type().into()),
                 "float" => args_vec.push(self.context.f32_type().into()),
-                _ => panic!("Unknown argument type {}", arg_type),
+                _ => {
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::NotImplemented,
+                        format!("Unimplemented argument type {}", arg_type)
+                    )
+                }
             }
         }
 
@@ -209,7 +245,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 }
                 ast::ExpressionType::None => {}
                 _ => {
-                    panic!("Unknown return annotation node");
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::NotImplemented,
+                        "Unknown return annotation node"
+                    );
                 }
             }
         }
@@ -236,7 +276,13 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 None,
             ),
 
-            _ => panic!("Unknown return type {}", return_type),
+            _ => {
+                return err!(
+                    self,
+                    LLVMCompileErrorType::NotImplemented,
+                    format!("Unknown return type {}", return_type)
+                )
+            }
         };
         let bb = self.context.append_basic_block(f, "");
 
@@ -257,7 +303,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                     value: bv.into_float_value(),
                 }
             } else {
-                panic!("NotImplemented function argument type")
+                return err!(
+                    self,
+                    LLVMCompileErrorType::NotImplemented,
+                    "Unimplemented function argument type"
+                );
             };
             let pointer = self
                 .builder

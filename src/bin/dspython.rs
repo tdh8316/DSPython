@@ -20,11 +20,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let file = matches.value_of("file").unwrap();
     let port = matches.value_of("port");
 
-    let opt_level = matches
-        .value_of("opt_level")
-        .unwrap_or("3")
-        .parse::<u8>()
-        .unwrap();
+    let opt_level = matches.value_of("opt_level").unwrap_or("3").parse::<u8>()?;
 
     let compiler_flags = CompilerFlags::new(opt_level);
 

@@ -1,13 +1,14 @@
 use either::Either;
 use inkwell::values::BasicValueEnum;
 
-use dsp_compiler_error::*;
 use dsp_compiler_value::convert::{truncate_bigint_to_u64, try_get_constant_string};
-use dsp_compiler_value::value::{Value, ValueType};
+use dsp_compiler_value::value::{Value, ValueHandler, ValueType};
 use dsp_python_parser::ast;
 
 use crate::CodeGen;
+use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
 use dsp_compiler_mangler::mangling;
+use inkwell::{FloatPredicate, IntPredicate};
 
 pub trait CGExpr<'a, 'ctx> {
     fn compile_expr(&mut self, expr: &ast::Expression) -> Result<Value<'ctx>, LLVMCompileError>;
@@ -15,6 +16,17 @@ pub trait CGExpr<'a, 'ctx> {
         &mut self,
         func: &Box<ast::Expression>,
         args: &Vec<ast::Expression>,
+    ) -> Result<Value<'ctx>, LLVMCompileError>;
+    fn compile_op(
+        &mut self,
+        a: Value<'ctx>,
+        op: &ast::Operator,
+        b: Value<'ctx>,
+    ) -> Result<Value<'ctx>, LLVMCompileError>;
+    fn compile_comparison(
+        &mut self,
+        vals: &[ast::Expression],
+        ops: &[ast::Comparison],
     ) -> Result<Value<'ctx>, LLVMCompileError>;
 }
 
@@ -40,12 +52,11 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                     };
                     Ok(value)
                 }
-                ast::Number::Complex { real: _, imag: _ } => Err(LLVMCompileError::new(
-                    self.get_source_location(),
-                    LLVMCompileErrorType::NotImplemented(Some(
-                        "Imaginary numbers are not supported.".parse().unwrap(),
-                    )),
-                )),
+                ast::Number::Complex { real: _, imag: _ } => err!(
+                    self,
+                    LLVMCompileErrorType::NotImplemented,
+                    "Imaginary numbers are not supported."
+                ),
             },
             ExpressionType::String { value } => {
                 let v = try_get_constant_string(value).unwrap();
@@ -58,14 +69,11 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                     };
                     Ok(value)
                 } else {
-                    Err(LLVMCompileError::new(
-                        self.get_source_location(),
-                        LLVMCompileErrorType::NotImplemented(Some(
-                            "String expression in global scope is not implemented."
-                                .parse()
-                                .unwrap(),
-                        )),
-                    ))
+                    err!(
+                        self,
+                        LLVMCompileErrorType::NotImplemented,
+                        "String expression in global scope is not implemented."
+                    )
                 }
             }
             ExpressionType::Call {
@@ -74,14 +82,14 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 keywords,
             } => {
                 let _keywords = keywords;
-                Ok(self.compile_expr_call(function, args)?)
+                self.compile_expr_call(function, args)
             }
             ExpressionType::Binop { a, op, b } => {
                 let a = self.compile_expr(a)?;
                 let b = self.compile_expr(b)?;
-                // self.compile_op(a, op, b)
-                unimplemented!()
+                self.compile_op(a, op, b)
             }
+            ExpressionType::Compare { vals, ops } => self.compile_comparison(vals, ops),
             ExpressionType::Identifier { name } => {
                 let (value_type, pointer_value) = if let Some(fn_value) = self.get_fn_value() {
                     let llvm_variable = self.locals.load(&fn_value, name);
@@ -92,10 +100,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                         if let Some(llvm_variable) = llvm_variable {
                             llvm_variable
                         } else {
-                            return Err(LLVMCompileError::new(
-                                self.get_source_location(),
-                                LLVMCompileErrorType::NameError(name.to_string()),
-                            ));
+                            return err!(self, LLVMCompileErrorType::NameError, name);
                         }
                     }
                 } else {
@@ -103,10 +108,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                     if let Some(llvm_variable) = llvm_variable {
                         llvm_variable
                     } else {
-                        return Err(LLVMCompileError::new(
-                            self.get_source_location(),
-                            LLVMCompileErrorType::NameError(String::from(name)),
-                        ));
+                        return err!(self, LLVMCompileErrorType::NameError, name);
                     }
                 };
                 let value = Value::from_basic_value(
@@ -122,10 +124,11 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
             ExpressionType::False => Ok(Value::Bool {
                 value: self.context.bool_type().const_int(0, false),
             }),
-            _ => Err(LLVMCompileError::new(
-                self.get_source_location(),
-                LLVMCompileErrorType::NotImplemented(Some(format!("{:?}", expr))),
-            )),
+            _ => err!(
+                self,
+                LLVMCompileErrorType::NotImplemented,
+                format!("{:?}", expr)
+            ),
         }
     }
 
@@ -137,12 +140,11 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
         let func_name = match &func.node {
             ast::ExpressionType::Identifier { name } => name,
             _ => {
-                return Err(LLVMCompileError::new(
-                    self.get_source_location(),
-                    LLVMCompileErrorType::NotImplemented(Some(format!(
-                        "Calling method is not implemented."
-                    ))),
-                ));
+                return err!(
+                    self,
+                    LLVMCompileErrorType::NotImplemented,
+                    "Calling method is not implemented."
+                );
             }
         }
         .to_string();
@@ -226,5 +228,158 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
             Either::Right(_) => Value::Void,
         };
         Ok(value)
+    }
+
+    fn compile_op(
+        &mut self,
+        a: Value<'ctx>,
+        op: &ast::Operator,
+        b: Value<'ctx>,
+    ) -> Result<Value<'ctx>, LLVMCompileError> {
+        use dsp_python_parser::ast::Operator;
+        let value = a.invoke_handler(
+            ValueHandler::new()
+                .handle_int(&|_, lhs_value| {
+                    b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
+                        // Div operator to int returns a float.
+                        if op == &Operator::Div {
+                            return Value::F32 {
+                                value: self.builder.build_float_div(
+                                    lhs_value.const_signed_to_float(self.context.f32_type()),
+                                    rhs_value.const_signed_to_float(self.context.f32_type()),
+                                    "div",
+                                ),
+                            };
+                        }
+                        Value::I16 {
+                            value: match op {
+                                Operator::Add {} => {
+                                    self.builder.build_int_add(lhs_value, rhs_value, "add")
+                                }
+                                Operator::Sub {} => {
+                                    self.builder.build_int_sub(lhs_value, rhs_value, "sub")
+                                }
+                                Operator::Mult => {
+                                    self.builder.build_int_mul(lhs_value, rhs_value, "mul")
+                                }
+                                Operator::Div => {
+                                    // In Python, dividing int by int returns a float,
+                                    // which is implemented above.
+                                    unimplemented!()
+                                }
+                                Operator::FloorDiv => self
+                                    .builder
+                                    .build_int_signed_div(lhs_value, rhs_value, "fld"),
+                                Operator::Mod => self
+                                    .builder
+                                    .build_int_signed_rem(lhs_value, rhs_value, "mod"),
+                                _ => panic!(
+                                    "{:?}\nNotImplemented {:?} operator for i16",
+                                    self.get_source_location(),
+                                    op
+                                ),
+                            },
+                        }
+                    }))
+                })
+                .handle_float(&|_, lhs_value| {
+                    b.invoke_handler(ValueHandler::new().handle_float(&|_, rhs_value| {
+                        // FloorDiv operator to float returns an int.
+                        if op == &Operator::FloorDiv {
+                            unimplemented!()
+                        }
+                        Value::F32 {
+                            value: match op {
+                                Operator::Add {} => {
+                                    self.builder.build_float_add(lhs_value, rhs_value, "add")
+                                }
+                                Operator::Sub {} => {
+                                    self.builder.build_float_sub(lhs_value, rhs_value, "sub")
+                                }
+                                Operator::Mult => {
+                                    self.builder.build_float_mul(lhs_value, rhs_value, "mul")
+                                }
+                                Operator::Div => {
+                                    self.builder.build_float_div(lhs_value, rhs_value, "div")
+                                }
+                                Operator::FloorDiv => {
+                                    // In Python, floordiv float by float returns a int,
+                                    // which is implemented above.
+                                    unimplemented!()
+                                }
+                                Operator::Mod => {
+                                    self.builder.build_float_rem(lhs_value, rhs_value, "mod")
+                                }
+                                _ => panic!(
+                                    "{:?}\nNotImplemented {:?} operator for f32",
+                                    self.get_source_location(),
+                                    op
+                                ),
+                            },
+                        }
+                    }))
+                }),
+        );
+        Ok(value)
+    }
+
+    fn compile_comparison(
+        &mut self,
+        vals: &[ast::Expression],
+        ops: &[ast::Comparison],
+    ) -> Result<Value<'ctx>, LLVMCompileError> {
+        if ops.len() > 1 || vals.len() > 2 {
+            return err!(
+                self,
+                LLVMCompileErrorType::NotImplemented,
+                "Chained comparison is not implemented."
+            );
+        }
+
+        let a = self.compile_expr(vals.first().unwrap())?;
+        let b = self.compile_expr(vals.last().unwrap())?;
+
+        a.invoke_handler(
+            ValueHandler::new()
+                .handle_int(&|_, lhs_value| {
+                    b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
+                        let int_predicate = match ops.first().unwrap() {
+                            ast::Comparison::Equal => IntPredicate::EQ,
+                            ast::Comparison::NotEqual => IntPredicate::NE,
+                            ast::Comparison::Greater => IntPredicate::SGT,
+                            ast::Comparison::Less => IntPredicate::SLT,
+                            _ => panic!("Unsupported int predicate"),
+                        };
+                        Value::Bool {
+                            value: self.builder.build_int_compare(
+                                int_predicate,
+                                lhs_value,
+                                rhs_value,
+                                "a",
+                            ),
+                        }
+                    }))
+                })
+                .handle_float(&|_, lhs_value| {
+                    b.invoke_handler(ValueHandler::new().handle_float(&|_, rhs_value| {
+                        let float_predicate = match ops.first().unwrap() {
+                            ast::Comparison::Equal => FloatPredicate::OEQ,
+                            ast::Comparison::NotEqual => FloatPredicate::ONE,
+                            ast::Comparison::Greater => FloatPredicate::OGT,
+                            ast::Comparison::Less => FloatPredicate::OLT,
+                            _ => panic!("Unsupported float predicate"),
+                        };
+                        Value::Bool {
+                            value: self.builder.build_float_compare(
+                                float_predicate,
+                                lhs_value,
+                                rhs_value,
+                                "a",
+                            ),
+                        }
+                    }))
+                }),
+        );
+        Ok(a)
     }
 }

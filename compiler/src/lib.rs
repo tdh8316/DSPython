@@ -8,24 +8,18 @@ use inkwell::support::LLVMString;
 use inkwell::targets::{TargetData, TargetTriple};
 use inkwell::OptimizationLevel;
 
-use dsp_compiler_error::LLVMCompileError;
+use dsp_compiler_error::{LLVMCompileError, LLVMCompileErrorType};
 use dsp_python_codegen::cgexpr::CGExpr;
 use dsp_python_codegen::cgstmt::CGStmt;
 use dsp_python_codegen::CodeGen;
 use dsp_python_parser::parser::parse_program;
 use dsp_python_parser::{ast, CompileError};
 
+pub use crate::flags::*;
+
+pub mod flags;
+
 type CompileResult<T> = Result<T, LLVMCompileError>;
-
-pub struct CompilerFlags {
-    pub optimization_level: u8,
-}
-
-impl CompilerFlags {
-    pub fn new(optimization_level: u8) -> Self {
-        CompilerFlags { optimization_level }
-    }
-}
 
 pub struct Compiler<'a, 'ctx> {
     pub source_path: String,
@@ -79,7 +73,7 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
     let ast = parse_program(&source)
         .map_err(to_compile_error)
         .expect(&format!(
-            "Failed to parse {} because of error above.",
+            "Failed to parse '{}' because of error above.",
             source_path
         ));
 
@@ -96,7 +90,20 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
     // Initialize pass manager
     let pass_manager: PassManager<Module> = PassManager::create(());
     let pm_builder = PassManagerBuilder::create();
-    pm_builder.set_optimization_level(OptimizationLevel::Aggressive);
+    pm_builder.set_optimization_level(match flags.optimization_level {
+        0 => OptimizationLevel::None,
+        1 => OptimizationLevel::Less,
+        2 => OptimizationLevel::Default,
+        3 => OptimizationLevel::Aggressive,
+        _ => {
+            return Err(LLVMCompileError::new(
+                None,
+                LLVMCompileErrorType::NotImplemented(
+                    "Optimization level must be a integer of 0~3".to_string(),
+                ),
+            ));
+        }
+    });
     pm_builder.populate_module_pass_manager(&pass_manager);
 
     let mut compiler = Compiler::new(
