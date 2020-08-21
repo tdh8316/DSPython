@@ -9,3 +9,4 @@ repository = "https://github.com/tdh8316/dspython"
 
 [dependencies]
 dsp_python_parser = { path = "../../python/parser" }
+inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm10-0" }

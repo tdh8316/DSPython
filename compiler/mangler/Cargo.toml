@@ -1,0 +1,11 @@
+[package]
+name = "dsp_compiler_mangler"
+version = "0.1.0"
+authors = ["탁동혁 <tdh8316@naver.com>"]
+edition = "2018"
+description = "Name mangler"
+license = "MIT"
+repository = "https://github.com/tdh8316/dspython"
+
+[dependencies]
+dsp_compiler_value = { path = "../value" }

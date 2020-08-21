@@ -5,11 +5,9 @@ use inkwell::values::FunctionValue;
 
 use dsp_python_parser::ast;
 
-use crate::scope::Globals;
-use crate::value::Value;
+use crate::scope::{Locals, VariableMap};
 
 pub mod scope;
-pub mod value;
 
 pub mod cgexpr;
 pub mod cgstmt;
@@ -20,7 +18,9 @@ pub struct CodeGen<'a, 'ctx> {
     pub module: &'a Module<'ctx>,
 
     _fn_value: Option<FunctionValue<'ctx>>,
-    pub globals: Globals<'ctx>,
+    _current_source_location: ast::Location,
+    globals: VariableMap<'ctx>,
+    locals: Locals<'ctx>,
 }
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
@@ -34,7 +34,31 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             builder,
             module,
             _fn_value: None,
-            globals: Globals::new(),
+            _current_source_location: ast::Location::default(),
+            globals: VariableMap::new(),
+            locals: Locals::new(),
         }
+    }
+
+    #[inline]
+    pub fn get_function(&self, name: &str) -> Option<FunctionValue<'ctx>> {
+        self.module.get_function(name)
+    }
+
+    pub fn set_fn_value(&mut self, fn_value: Option<FunctionValue<'ctx>>) {
+        self._fn_value = fn_value;
+    }
+
+    #[inline]
+    pub fn get_fn_value(&self) -> Option<FunctionValue<'ctx>> {
+        self._fn_value
+    }
+
+    fn set_source_location(&mut self, location: ast::Location) {
+        self._current_source_location = location;
+    }
+
+    pub fn get_source_location(&self) -> ast::Location {
+        self._current_source_location
     }
 }

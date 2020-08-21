@@ -58,8 +58,8 @@ optional arguments:
     -u PORT, --upload PORT
                      Serial Port to upload hex"#,
     )
-        .arg(arg_file)
-        .arg(arg_opt)
-        .arg(arg_port)
-        .get_matches()
+    .arg(arg_file)
+    .arg(arg_opt)
+    .arg(arg_port)
+    .get_matches()
 }

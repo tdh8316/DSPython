@@ -1,9 +1,9 @@
 #![allow(warnings)]
 
-use inkwell::AddressSpace;
 use inkwell::context::Context;
 use inkwell::types::{AnyTypeEnum, BasicTypeEnum, FloatType, IntType, PointerType, VoidType};
 use inkwell::values::{AnyValueEnum, BasicValueEnum, FloatValue, IntValue, PointerValue};
+use inkwell::AddressSpace;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Value<'ctx> {

@@ -3,17 +3,17 @@ use std::fs::read_to_string;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::OptimizationLevel;
 use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::support::LLVMString;
 use inkwell::targets::{TargetData, TargetTriple};
+use inkwell::OptimizationLevel;
 
 use dsp_compiler_error::LLVMCompileError;
 use dsp_python_codegen::cgexpr::CGExpr;
 use dsp_python_codegen::cgstmt::CGStmt;
 use dsp_python_codegen::CodeGen;
-use dsp_python_parser::{ast, CompileError};
 use dsp_python_parser::parser::parse_program;
+use dsp_python_parser::{ast, CompileError};
 
 type CompileResult<T> = Result<T, LLVMCompileError>;
 
@@ -28,7 +28,6 @@ impl CompilerFlags {
 }
 
 pub struct Compiler<'a, 'ctx> {
-    pub program: ast::Program,
     pub source_path: String,
     pub compiler_flags: CompilerFlags,
 
@@ -38,7 +37,6 @@ pub struct Compiler<'a, 'ctx> {
 
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
     pub fn new(
-        program: ast::Program,
         source_path: String,
         compiler_flags: CompilerFlags,
         context: &'ctx Context,
@@ -47,7 +45,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         pass_manager: PassManager<Module<'ctx>>,
     ) -> Self {
         Compiler {
-            program,
             source_path,
             compiler_flags,
             cg: CodeGen::new(context, builder, module),
@@ -55,8 +52,8 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         }
     }
 
-    pub fn compile(&mut self) -> CompileResult<()> {
-        for statement in self.program.statements.iter() {
+    pub fn compile(&mut self, program: ast::Program) -> CompileResult<()> {
+        for statement in program.statements.iter() {
             if let ast::StatementType::Expression { ref expression } = statement.node {
                 self.cg.compile_expr(&expression)?;
             } else {
@@ -66,16 +63,19 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         Ok(())
     }
 
-    pub fn emit_llvm(&self) -> CompileResult<LLVMString> {
+    pub fn emit(&self) -> LLVMString {
         self.pass_manager.run_on(&self.cg.module);
-        Ok(self.cg.module.print_to_string())
+        self.cg.module.print_to_string()
     }
 }
 
 pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMString> {
     let to_compile_error =
         |parse_error| CompileError::from_parse_error(parse_error, source_path.clone());
-    let source = read_to_string(&source_path).unwrap();
+    let source = read_to_string(&source_path).expect(&format!(
+        "python: can't open file '{}': [Errno 2] No such file or directory",
+        source_path
+    ));
     let ast = parse_program(&source)
         .map_err(to_compile_error)
         .expect(&format!(
@@ -100,7 +100,6 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
     pm_builder.populate_module_pass_manager(&pass_manager);
 
     let mut compiler = Compiler::new(
-        ast,
         source_path,
         flags,
         &context,
@@ -109,7 +108,7 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
         pass_manager,
     );
 
-    compiler.compile();
+    compiler.compile(ast)?;
 
-    compiler.emit_llvm()
+    Ok(compiler.emit())
 }

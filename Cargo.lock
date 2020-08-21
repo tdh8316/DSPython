@@ -242,6 +242,25 @@ name = "dsp_compiler_error"
 version = "0.1.0"
 dependencies = [
  "dsp_python_parser",
+ "inkwell",
+]
+
+[[package]]
+name = "dsp_compiler_mangler"
+version = "0.1.0"
+dependencies = [
+ "dsp_compiler_value",
+]
+
+[[package]]
+name = "dsp_compiler_value"
+version = "0.1.0"
+dependencies = [
+ "dsp_python_parser",
+ "inkwell",
+ "num-bigint",
+ "num-complex",
+ "num-traits",
 ]
 
 [[package]]
@@ -253,10 +272,13 @@ name = "dsp_python_codegen"
 version = "0.1.0"
 dependencies = [
  "dsp_compiler_error",
+ "dsp_compiler_mangler",
+ "dsp_compiler_value",
  "dsp_python_parser",
+ "either",
  "inkwell",
- "num-bigint 0.2.6",
- "num-complex 0.2.4",
+ "num-bigint",
+ "num-complex",
  "num-traits",
 ]
 
@@ -486,34 +508,12 @@ checksum = "e4a24736216ec316047a1fc4252e27dabb04218aa4a3f37c6e7ddbf1f9782b54"
 
 [[package]]
 name = "num-bigint"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "090c7f9998ee0ff65aa5b723e4009f7b217707f1fb5ea551329cc4d6231fb304"
-dependencies = [
- "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-bigint"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7f3fc75e3697059fb1bc465e3d8cca6cf92f56854f201158b3f9c77d5a3cfa0"
 dependencies = [
  "autocfg",
  "num-integer",
- "num-traits",
- "serde",
-]
-
-[[package]]
-name = "num-complex"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6b19411a9719e753aff12e5187b74d60d3dc449ec3f4dc21e3989c3f554bc95"
-dependencies = [
- "autocfg",
  "num-traits",
  "serde",
 ]
@@ -684,8 +684,8 @@ dependencies = [
  "bitflags",
  "itertools",
  "lz4-compression",
- "num-bigint 0.3.0",
- "num-complex 0.3.0",
+ "num-bigint",
+ "num-complex",
  "serde",
 ]
 
@@ -698,7 +698,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "log",
- "num-complex 0.3.0",
+ "num-complex",
  "rustpython-bytecode",
  "rustpython-parser",
 ]
@@ -711,7 +711,7 @@ dependencies = [
  "lalrpop",
  "lalrpop-util",
  "log",
- "num-bigint 0.3.0",
+ "num-bigint",
  "num-traits",
  "unic-emoji-char",
  "unic-ucd-ident",
