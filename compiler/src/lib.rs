@@ -16,8 +16,10 @@ use dsp_python_parser::parser::parse_program;
 use dsp_python_parser::{ast, CompileError};
 
 pub use crate::flags::*;
+use crate::llvm_prototypes::generate_prototypes;
 
 pub mod flags;
+mod llvm_prototypes;
 
 type CompileResult<T> = Result<T, LLVMCompileError>;
 
@@ -47,6 +49,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     }
 
     pub fn compile(&mut self, program: ast::Program) -> CompileResult<()> {
+        generate_prototypes(self.cg.module, self.cg.context);
         for statement in program.statements.iter() {
             if let ast::StatementType::Expression { ref expression } = statement.node {
                 self.cg.compile_expr(&expression)?;

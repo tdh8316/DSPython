@@ -2,9 +2,9 @@ use std::env;
 use std::io::Write;
 use std::process::Command;
 
-/// Upload hex file to serial port
-pub fn upload_to(hex: &str, port: &str) {
-    print!("Uploading {} >> {}...", hex, port);
+/// Generate hex file from llvm assembly and return the file path
+pub fn objcopy(assembly: &str) -> String {
+    print!("Generating hex file...");
     std::io::stdout().flush().unwrap_or_default();
 
     // Load the environmental variable: `ARDUINO_DIR`
@@ -17,29 +17,31 @@ pub fn upload_to(hex: &str, port: &str) {
     let exe = env::current_exe().unwrap();
     let dir = exe.parent().expect("Executable must be in some directory");
 
-    // Uploader path
-    let uploader = if cfg!(debug_assertions) {
-        format!("python src/uploader.py")
+    // Linker path
+    let linker = if cfg!(debug_assertions) {
+        format!("python builder/linker.py")
     } else {
-        format!("{}/bin/uploader", dir.display())
+        format!("{}/bin/builder", dir.display())
     };
-    let uploader = uploader.as_str();
+    let linker = linker.as_str();
 
-    // Execute the uploader command
+    // Execute the linker command
     let out = if cfg!(target_os = "windows") {
         Command::new("cmd")
-            .args(&["/C", uploader, arduino_dir, hex, port])
-            .output()
+            .args(&["/C", linker, arduino_dir, assembly])
+            .status()
             .expect("Failed to execute command")
     } else {
         Command::new("sh")
-            .args(&["-c", uploader, arduino_dir, hex, port])
-            .output()
+            .args(&["-c", linker, arduino_dir, assembly])
+            .status()
             .expect("Failed to execute command")
     };
-    if !out.status.success() {
-        println!("{}", String::from_utf8_lossy(&out.stderr));
-        panic!("Failed to perform uploading.");
+    if !out.success() {
+        panic!("Failed to perform builder.");
     }
-    println!("[Done]")
+    println!("[Done]");
+    {
+        format!("{}.hex", assembly)
+    }
 }

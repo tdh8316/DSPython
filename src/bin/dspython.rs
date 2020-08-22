@@ -3,6 +3,7 @@ use std::fs::write;
 
 use clap::{App, Arg, ArgMatches};
 
+use dsp_builder::objcopy;
 use dsp_compiler::{compile, CompilerFlags};
 use dspython::upload_to;
 
@@ -29,9 +30,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let ll = format!("{}.ll", file);
     write(&ll, assembly.to_string()).unwrap();
 
+    let hex = objcopy(&ll);
+
     if let Some(port) = port {
-        upload_to(&ll, port);
+        upload_to(&hex, port);
     }
+
+    // Remove the hex file after finishing upload
+    std::fs::remove_file(hex).unwrap();
 
     Ok(())
 }
@@ -42,7 +48,7 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
         .long("upload")
         .short("u")
         .takes_value(true);
-    let arg_opt = Arg::with_name("opt_level").short("O").takes_value(true);
+    let arg_opt = Arg::with_name("opt_level").short("o").takes_value(true);
 
     app.usage(
         r#"usage: dspython [-u PORT] FILE
@@ -52,7 +58,9 @@ positional arguments:
 
 optional arguments:
     -u PORT, --upload PORT
-                     Serial Port to upload hex"#,
+                     Serial Port to upload hex
+    -o OPTIMIZATION_LEVEL
+                     Optimization level"#,
     )
     .arg(arg_file)
     .arg(arg_opt)

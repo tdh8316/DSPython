@@ -228,6 +228,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "dsp_builder"
+version = "0.1.0"
+
+[[package]]
 name = "dsp_compiler"
 version = "0.1.0"
 dependencies = [
@@ -295,6 +299,7 @@ name = "dspython"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "dsp_builder",
  "dsp_compiler",
  "dsp_python_codegen",
  "dsp_python_parser",
