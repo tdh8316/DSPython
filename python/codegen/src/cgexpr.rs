@@ -1,14 +1,14 @@
 use either::Either;
 use inkwell::values::BasicValueEnum;
+use inkwell::{FloatPredicate, IntPredicate};
 
+use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
+use dsp_compiler_mangler::mangling;
 use dsp_compiler_value::convert::{truncate_bigint_to_u64, try_get_constant_string};
 use dsp_compiler_value::value::{Value, ValueHandler, ValueType};
 use dsp_python_parser::ast;
 
 use crate::CodeGen;
-use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
-use dsp_compiler_mangler::mangling;
-use inkwell::{FloatPredicate, IntPredicate};
 
 pub trait CGExpr<'a, 'ctx> {
     fn compile_expr(&mut self, expr: &ast::Expression) -> Result<Value<'ctx>, LLVMCompileError>;
@@ -237,7 +237,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
         b: Value<'ctx>,
     ) -> Result<Value<'ctx>, LLVMCompileError> {
         use dsp_python_parser::ast::Operator;
-        let value = a.invoke_handler(
+        Ok(a.invoke_handler(
             ValueHandler::new()
                 .handle_int(&|_, lhs_value| {
                     b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
@@ -319,8 +319,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                         }
                     }))
                 }),
-        );
-        Ok(value)
+        ))
     }
 
     fn compile_comparison(
@@ -339,7 +338,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
         let a = self.compile_expr(vals.first().unwrap())?;
         let b = self.compile_expr(vals.last().unwrap())?;
 
-        a.invoke_handler(
+        Ok(a.invoke_handler(
             ValueHandler::new()
                 .handle_int(&|_, lhs_value| {
                     b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
@@ -379,7 +378,6 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                         }
                     }))
                 }),
-        );
-        Ok(a)
+        ))
     }
 }
