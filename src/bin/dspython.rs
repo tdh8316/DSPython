@@ -51,7 +51,7 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
     let arg_opt = Arg::with_name("opt_level").short("o").takes_value(true);
 
     app.usage(
-        r#"usage: dspython [-u PORT] FILE
+        r#"usage: dspython [-u PORT] [-o OPT_LEVEL] FILE
 
 positional arguments:
     FILE             Source file
@@ -59,8 +59,8 @@ positional arguments:
 optional arguments:
     -u PORT, --upload PORT
                      Serial Port to upload hex
-    -o OPTIMIZATION_LEVEL
-                     Optimization level"#,
+    -o OPT_LEVEL
+                     LLVM Optimization level"#,
     )
     .arg(arg_file)
     .arg(arg_opt)
