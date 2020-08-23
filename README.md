@@ -2,17 +2,16 @@
 This project is in the initial stage now and probably not do what you want.
 You can browse the [tests](https://github.com/tdh8316/dsp/tree/master/tests) directory to see upstream working, or [example](https://github.com/tdh8316/dsp/tree/master/examples) directory to learn DSP.
 
-[Language roadmap](https://github.com/tdh8316/dsp/blob/master/ROADMAP.md)
-> Disappointed? Please consider contributing!
+> Are you disappointed? Please consider contributing!
 
-# DSP - Damn Small Python
+# DSPython - Damn Small Python
 > Python compiler for small places
 
-DSP is a restricted Python subset compiler intended for use in Arduino.
+DSPython is a restricted Python subset compiler intended for use in Arduino.
 
 The [Micropython](https://github.com/micropython/micropython) project aims to put an implementation of Python 3 on microcontrollers, however, not available on Arduino.
 
-DSP uses [LLVM](http://llvm.org/) to provide a way to compile programs written in the Python programming language.
+DSPython uses [LLVM](http://llvm.org/) to provide a way to compile programs written in the Python programming language.
 
 >**Note that it runs directly on the Arduino board, not through serial communication.**
 
