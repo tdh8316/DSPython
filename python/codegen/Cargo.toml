@@ -11,6 +11,7 @@ repository = "https://github.com/tdh8316/dspython"
 dsp_compiler_error = { path = "../../compiler/error" }
 dsp_compiler_mangler = { path = "../../compiler/mangler" }
 dsp_compiler_value = { path = "../../compiler/value" }
+dsp_python_macros = { path = "../macros" }
 dsp_python_parser = { path = "../parser" }
 either = "1.6.0"
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm10-0" }

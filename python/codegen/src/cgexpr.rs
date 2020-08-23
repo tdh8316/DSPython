@@ -1,6 +1,6 @@
 use either::Either;
-use inkwell::values::BasicValueEnum;
 use inkwell::{FloatPredicate, IntPredicate};
+use inkwell::values::BasicValueEnum;
 
 use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
 use dsp_compiler_mangler::mangling;
@@ -138,7 +138,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
         args: &Vec<ast::Expression>,
     ) -> Result<Value<'ctx>, LLVMCompileError> {
         let func_name = match &func.node {
-            ast::ExpressionType::Identifier { name } => name,
+            ast::ExpressionType::Identifier { name } => name.to_string(),
             _ => {
                 return err!(
                     self,
@@ -146,8 +146,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                     "Calling method is not implemented."
                 );
             }
-        }
-        .to_string();
+        };
 
         let first_arg = self.compile_expr(args.clone().first().unwrap())?;
 
@@ -155,14 +154,12 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
             Some(f) => f,
             None => {
                 let func_name_mangled = mangling(&func_name, first_arg.get_type());
-                self.get_function(func_name_mangled.as_ref()).expect(
-                    format!(
+                self.get_function(func_name_mangled.as_ref())
+                    .expect(&format!(
                         "{:?}\nFunction '{}' is not defined",
                         self.get_source_location(),
                         func_name
-                    )
-                    .as_str(),
-                )
+                    ))
             }
         };
 
@@ -283,12 +280,8 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                     }))
                 })
                 .handle_float(&|_, lhs_value| {
-                    b.invoke_handler(ValueHandler::new().handle_float(&|_, rhs_value| {
-                        // FloorDiv operator to float returns an int.
-                        if op == &Operator::FloorDiv {
-                            unimplemented!()
-                        }
-                        Value::F32 {
+                    b.invoke_handler(
+                        ValueHandler::new().handle_float(&|_, rhs_value| Value::F32 {
                             value: match op {
                                 Operator::Add {} => {
                                     self.builder.build_float_add(lhs_value, rhs_value, "add")
@@ -302,11 +295,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                                 Operator::Div => {
                                     self.builder.build_float_div(lhs_value, rhs_value, "div")
                                 }
-                                Operator::FloorDiv => {
-                                    // In Python, floordiv float by float returns a int,
-                                    // which is implemented above.
-                                    unimplemented!()
-                                }
+                                Operator::FloorDiv => unimplemented!(),
                                 Operator::Mod => {
                                     self.builder.build_float_rem(lhs_value, rhs_value, "mod")
                                 }
@@ -316,8 +305,8 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                                     op
                                 ),
                             },
-                        }
-                    }))
+                        }),
+                    )
                 }),
         ))
     }
