@@ -391,7 +391,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
     ) -> Result<(), LLVMCompileError> {
         let parent = self.get_fn_value().unwrap();
 
-        let while_bb = self.context.append_basic_block(parent, "while.cond");
+        let while_bb = self.context.append_basic_block(parent, "while");
         let loop_bb = self.context.append_basic_block(parent, "while.body");
         let else_bb = self.context.append_basic_block(parent, "while.else");
         let end_bb = self.context.append_basic_block(parent, "while.end");
@@ -404,7 +404,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         let start = self.compile_expr(test)?;
         let cond = start.invoke_handler(cvhandler!(self));
 
-        // At first, Check whether or not the condition is true in the header of the loop.
+        // At first, Check whether or not the condition in the header of the loop is true.
         self.builder
             .build_conditional_branch(cond, loop_bb, else_bb);
 
@@ -415,8 +415,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         }
 
         // Emit the conditional branch at the end of the loop body.
-        self.builder
-            .build_conditional_branch(cond, while_bb, else_bb);
+        // self.builder
+        //     .build_conditional_branch(cond, while_bb, else_bb);
+        // It is not needed to check the condition.
+        // Return to the while header block and check it in there.
+        self.builder.build_unconditional_branch(while_bb);
 
         // Emit the 'else' code if present.
         self.builder.position_at_end(else_bb);

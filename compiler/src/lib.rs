@@ -60,8 +60,11 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         Ok(())
     }
 
-    pub fn emit(&self) -> LLVMString {
+    pub fn run_pm(&self) {
         self.pass_manager.run_on(&self.cg.module);
+    }
+
+    pub fn emit(&self) -> LLVMString {
         self.cg.module.print_to_string()
     }
 }
@@ -119,6 +122,7 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
     );
 
     compiler.compile(ast)?;
+    compiler.run_pm();
 
     Ok(compiler.emit())
 }

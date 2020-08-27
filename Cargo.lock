@@ -278,6 +278,7 @@ dependencies = [
  "dsp_compiler_error",
  "dsp_compiler_mangler",
  "dsp_compiler_value",
+ "dsp_python_macros",
  "dsp_python_parser",
  "either",
  "inkwell",
@@ -285,6 +286,10 @@ dependencies = [
  "num-complex",
  "num-traits",
 ]
+
+[[package]]
+name = "dsp_python_macros"
+version = "0.1.0"
 
 [[package]]
 name = "dsp_python_parser"
