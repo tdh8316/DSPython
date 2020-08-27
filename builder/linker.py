@@ -5,9 +5,10 @@ $ builder.py ARDUINO_DIR LLVM_ASSEMBLY
 
 import os
 import sys
-from shutil import which as is_executable
 
 ARDUINO_DIR = sys.argv[1]
+
+is_windows = os.name == "nt"
 
 CC = "{ARDUINO_DIR}/hardware/tools/avr/bin/avr-gcc".format(ARDUINO_DIR=ARDUINO_DIR)
 CPP = "{ARDUINO_DIR}/hardware/tools/avr/bin/avr-g++".format(ARDUINO_DIR=ARDUINO_DIR)
@@ -41,7 +42,7 @@ INCLUDE_FILES = (
 # library sources
 LIBRARY_DIR = "{}/hardware/arduino/avr/cores/arduino/".format(ARDUINO_DIR)
 
-if not is_executable(CPP+".exe"):
+if not os.path.isfile(CPP + (".exe" if is_windows else "")):
     raise ModuleNotFoundError("Arduino compiler not found!")
 
 if not (os.path.isdir(LIBRARY_DIR)):
