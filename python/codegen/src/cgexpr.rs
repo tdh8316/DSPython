@@ -1,6 +1,6 @@
 use either::Either;
-use inkwell::{FloatPredicate, IntPredicate};
-use inkwell::values::BasicValueEnum;
+use inkwell::{FloatPredicate, IntPredicate, AddressSpace};
+use inkwell::values::{BasicValueEnum, InstructionOpcode};
 
 use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
 use dsp_compiler_mangler::mangling;
@@ -9,6 +9,8 @@ use dsp_compiler_value::value::{Value, ValueHandler, ValueType};
 use dsp_python_parser::ast;
 
 use crate::CodeGen;
+use crate::scope::{LLVMVariableAccessor, LLVMVariable};
+use inkwell::types::{PointerType, BasicType};
 
 pub trait CGExpr<'a, 'ctx> {
     fn compile_expr(&mut self, expr: &ast::Expression) -> Result<Value<'ctx>, LLVMCompileError>;
@@ -124,6 +126,39 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
             ExpressionType::False => Ok(Value::Bool {
                 value: self.context.bool_type().const_int(0, false),
             }),
+            ExpressionType::Unop { op, a } => match &a.node {
+                ExpressionType::Number { value } => match value {
+                    ast::Number::Integer { value } => match op {
+                        ast::UnaryOperator::Neg => {
+                            let value = Value::I16 {
+                                value: self
+                                    .context
+                                    .i16_type()
+                                    .const_int(truncate_bigint_to_u64(&-value), true),
+                            };
+                            Ok(value)
+                        }
+                        _ => panic!("NotImplemented unop for i16."),
+                    },
+                    ast::Number::Float { value } => match op {
+                        ast::UnaryOperator::Neg => {
+                            let value = Value::F32 {
+                                value: self.context.f32_type().const_float(-value.clone()),
+                            };
+                            Ok(value)
+                        }
+                        _ => panic!("NotImplemented unop for f32."),
+                    },
+                    ast::Number::Complex { real: _, imag: _ } => {
+                        return err!(
+                            self,
+                            LLVMCompileErrorType::NotImplemented,
+                            format!("Complex numbers are not implemented.")
+                        );
+                    }
+                },
+                _ => panic!("NotImplemented type for unop"),
+            },
             _ => err!(
                 self,
                 LLVMCompileErrorType::NotImplemented,
@@ -276,6 +311,19 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                                     op
                                 ),
                             },
+                        }
+                    }).handle_float(&|_, rhs_value| {
+                        Value::F32 {
+                            value: match op {
+                                Operator::Mult => self.builder.build_float_mul(
+                                    self.builder.build_cast(InstructionOpcode::SIToFP, lhs_value, self.context.f32_type(), "sitofp").into_float_value(),
+                                    rhs_value,
+                                    "mul",
+                                ),
+                                _ => {
+                                    unimplemented!()
+                                }
+                            }
                         }
                     }))
                 })

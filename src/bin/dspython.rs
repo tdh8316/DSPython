@@ -10,7 +10,6 @@ use dspython::upload_to;
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 
-
 fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
     let arg_file = Arg::with_name("file").required(true);
     let arg_port = Arg::with_name("port")
@@ -31,12 +30,11 @@ optional arguments:
     -o OPT_LEVEL
                      LLVM Optimization level"#,
     )
-        .arg(arg_file)
-        .arg(arg_opt)
-        .arg(arg_port)
-        .get_matches()
+    .arg(arg_file)
+    .arg(arg_opt)
+    .arg(arg_port)
+    .get_matches()
 }
-
 
 fn main() -> Result<(), Box<dyn Error>> {
     let app = App::new("dspython")

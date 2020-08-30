@@ -3,9 +3,9 @@ from core.arduino import *
 
 def setup():
     serial_begin(9600)
-    print("Hello, Arduino!")
-    print("...from Damn Small Python")
 
 
 def loop():
-    return
+    sensor_value = analog_read(A0)
+    print(sensor_value)
+    delay(1)

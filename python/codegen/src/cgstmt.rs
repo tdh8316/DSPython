@@ -1,8 +1,8 @@
 use std::option::Option::Some;
 
-use inkwell::{FloatPredicate, IntPredicate};
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::BasicValue;
+use inkwell::{FloatPredicate, IntPredicate};
 
 use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
 use dsp_compiler_value::value::{Value, ValueHandler, ValueType};
@@ -10,8 +10,8 @@ use dsp_python_macros::*;
 use dsp_python_parser::ast;
 
 use crate::cgexpr::CGExpr;
-use crate::CodeGen;
 use crate::scope::LLVMVariableAccessor;
+use crate::CodeGen;
 
 pub trait CGStmt<'a, 'ctx> {
     fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError>;
@@ -157,8 +157,8 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 let _level = level;
                 let target = module.as_ref().expect("Unknown module name");
                 let _names = names;
-                if target.clone() == String::from("uno") {
-                    // Do nothing
+                if target == "core.arduino" {
+                    // Builtin
                 } else {
                     return err!(
                         self,
@@ -185,6 +185,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 self.compile_stmt_while(test, body, orelse)?;
                 Ok(())
             }
+            StatementType::Pass => Ok(()),
             _ => err!(
                 self,
                 LLVMCompileErrorType::NotImplemented,
@@ -339,6 +340,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         body: &Vec<ast::Statement>,
         orelse: Option<&Vec<ast::Statement>>,
     ) -> Result<(), LLVMCompileError> {
+        // TODO: Fix
         let parent = self.get_fn_value().unwrap();
         let cond = cond.invoke_handler(cvhandler!(self));
 
@@ -365,9 +367,10 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
 
         // let _then_bb = self.builder.get_insert_block().unwrap();
 
+        // Move
+        self.builder.position_at_end(else_bb);
         // Emit the 'else' code if present.
         if let Some(statements) = orelse {
-            self.builder.position_at_end(else_bb);
             for statement in statements.iter() {
                 self.compile_stmt(statement)?;
             }

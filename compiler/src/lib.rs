@@ -49,7 +49,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     }
 
     pub fn compile(&mut self, program: ast::Program) -> CompileResult<()> {
-        generate_prototypes(self.cg.module, self.cg.context);
         for statement in program.statements.iter() {
             if let ast::StatementType::Expression { ref expression } = statement.node {
                 self.cg.compile_expr(&expression)?;
@@ -76,7 +75,7 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
         "python: can't open file '{}': [Errno 2] No such file or directory",
         source_path
     ));
-    let ast = parse_program(&source)
+    let source_ast = parse_program(&source)
         .map_err(to_compile_error)
         .expect(&format!(
             "Failed to parse '{}' because of error above.",
@@ -121,8 +120,29 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
         pass_manager,
     );
 
-    compiler.compile(ast)?;
-    compiler.run_pm();
+    generate_prototypes(compiler.cg.module, compiler.cg.context);
+    let builtins_libs: Vec<&str> = vec!["core/arduino_pins.py", "core/uno.py"];
+    for lib in builtins_libs.iter() {
+        let to_compile_error =
+            |parse_error| CompileError::from_parse_error(parse_error, lib.to_string());
+        let source = read_to_string(lib).expect(&format!(
+            "python: can't open file '{}': [Errno 2] No such file or directory",
+            lib,
+        ));
+        let core_ast = parse_program(&source)
+            .map_err(to_compile_error)
+            .expect(&format!(
+                "Failed to parse a dspython core library '{}' because of error above.",
+                lib,
+            ));
+        // println!("Compiling {}", lib);
+        compiler.compile(core_ast)?;
+        // println!("Done")
+    }
+    compiler.compile(source_ast)?;
+    // println!("Done");
 
+    compiler.run_pm();
+    // println!("PM Done");
     Ok(compiler.emit())
 }

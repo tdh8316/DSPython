@@ -39,6 +39,13 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
             .fn_type(&[context.i8_type().into()], false),
         None,
     );
+    module.add_function(
+        "analog_read",
+        context
+            .i16_type()
+            .fn_type(&[context.i8_type().into()], false),
+        None,
+    );
 
     // Python builtins
     module.add_function(

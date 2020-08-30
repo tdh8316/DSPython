@@ -1,4 +1,4 @@
-from uno import *
+from core.arduino import *
 
 LED_BUILTIN = 13
 
