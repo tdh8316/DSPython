@@ -1,8 +1,8 @@
 use std::option::Option::Some;
 
+use inkwell::{FloatPredicate, IntPredicate};
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::BasicValue;
-use inkwell::{FloatPredicate, IntPredicate};
 
 use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
 use dsp_compiler_value::value::{Value, ValueHandler, ValueType};
@@ -10,8 +10,8 @@ use dsp_python_macros::*;
 use dsp_python_parser::ast;
 
 use crate::cgexpr::CGExpr;
-use crate::scope::LLVMVariableAccessor;
 use crate::CodeGen;
+use crate::scope::LLVMVariableAccessor;
 
 pub trait CGStmt<'a, 'ctx> {
     fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError>;
@@ -340,46 +340,35 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         body: &Vec<ast::Statement>,
         orelse: Option<&Vec<ast::Statement>>,
     ) -> Result<(), LLVMCompileError> {
-        // TODO: Fix
         let parent = self.get_fn_value().unwrap();
-        let cond = cond.invoke_handler(cvhandler!(self));
 
-        // If-then block
         let then_bb = self.context.append_basic_block(parent, "if.then");
-
-        // If-else block
         let else_bb = self.context.append_basic_block(parent, "if.else");
-
-        // Unconditional block
         let end_bb = self.context.append_basic_block(parent, "if.end");
 
-        self.builder
-            .build_conditional_branch(cond, then_bb, else_bb);
+        let cond = cond.invoke_handler(cvhandler!(self));
 
-        // Emit the 'then' code.
+        // Build the conditional branch.
+        self.builder.build_conditional_branch(cond, then_bb, else_bb);
+
+        // Emit at if.then.
         self.builder.position_at_end(then_bb);
         for statement in body.iter() {
             self.compile_stmt(statement)?;
         }
-
-        // Then, unconditionally jump to the end block
+        // Then, unconditionally jump to the end block.
         self.builder.build_unconditional_branch(end_bb);
 
-        // let _then_bb = self.builder.get_insert_block().unwrap();
-
-        // Move
+        // Emit at if.else if present.
         self.builder.position_at_end(else_bb);
-        // Emit the 'else' code if present.
         if let Some(statements) = orelse {
             for statement in statements.iter() {
                 self.compile_stmt(statement)?;
             }
         }
 
-        // Then, unconditionally jump to the end block
+        // Then, unconditionally jump to the end block.
         self.builder.build_unconditional_branch(end_bb);
-
-        // let _else_bb = self.builder.get_insert_block().unwrap();
 
         // Set the cursor at the end
         self.builder.position_at_end(end_bb);
