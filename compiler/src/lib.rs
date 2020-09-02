@@ -135,14 +135,10 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
                 "Failed to parse a dspython core library '{}' because of error above.",
                 lib,
             ));
-        // println!("Compiling {}", lib);
         compiler.compile(core_ast)?;
-        // println!("Done")
     }
     compiler.compile(source_ast)?;
-    // println!("Done");
 
     compiler.run_pm();
-    // println!("PM Done");
     Ok(compiler.emit())
 }
