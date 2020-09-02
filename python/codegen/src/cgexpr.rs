@@ -1,5 +1,5 @@
 use either::Either;
-use inkwell::{FloatPredicate, IntPredicate, AddressSpace};
+use inkwell::{FloatPredicate, IntPredicate};
 use inkwell::values::{BasicValueEnum, InstructionOpcode};
 
 use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
@@ -9,8 +9,6 @@ use dsp_compiler_value::value::{Value, ValueHandler, ValueType};
 use dsp_python_parser::ast;
 
 use crate::CodeGen;
-use crate::scope::{LLVMVariableAccessor, LLVMVariable};
-use inkwell::types::{PointerType, BasicType};
 
 pub trait CGExpr<'a, 'ctx> {
     fn compile_expr(&mut self, expr: &ast::Expression) -> Result<Value<'ctx>, LLVMCompileError>;
