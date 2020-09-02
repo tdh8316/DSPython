@@ -115,38 +115,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                         "'return' outside function"
                     );
                 }
-                if let Some(value) = value {
-                    let return_value = self.compile_expr(value)?;
-
-                    if return_value.get_type() == ValueType::Void {
-                        self.builder.build_return(None);
-                    } else {
-                        // Type check
-                        let fn_type = self
-                            .get_fn_value()
-                            .unwrap()
-                            .get_type()
-                            .get_return_type()
-                            .unwrap();
-                        let value_type = return_value.to_basic_value().get_type();
-                        if fn_type != value_type {
-                            return err!(
-                                self,
-                                LLVMCompileErrorType::TypeError,
-                                format!("{:?}", fn_type),
-                                format!("{:?}", value_type)
-                            );
-                        }
-
-                        return_value.invoke_handler(
-                            ValueHandler::new()
-                                .handle_int(&|_, value| self.builder.build_return(Some(&value)))
-                                .handle_float(&|_, value| self.builder.build_return(Some(&value))),
-                        );
-                    }
-                } else {
-                    self.builder.build_return(None);
-                }
+                // TODO: Fix return
                 Ok(())
             }
             StatementType::ImportFrom {
