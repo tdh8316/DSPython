@@ -26,25 +26,29 @@ RISING = 3
 def min__i__(a: int, b: int) -> int:
     if a < b:
         return a
-    return b
+    else:
+        return b
 
 
 def min__f__(a: float, b: float) -> float:
     if a < b:
         return a
-    return b
+    else:
+        return b
 
 
 def max__i__(a: int, b: int) -> int:
     if a > b:
         return a
-    return b
+    else:
+        return b
 
 
 def max__f__(a: float, b: float) -> float:
     if a > b:
         return a
-    return b
+    else:
+        return b
 
 
 def radians__i__(deg: int) -> float:

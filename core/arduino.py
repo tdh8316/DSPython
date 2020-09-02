@@ -30,3 +30,11 @@ def digital_read(_pin: int) -> int:
 
 def analog_read(_pin: int) -> int:
     ...
+
+
+def radians(_deg) -> float:
+    ...
+
+
+def degrees(_rad) -> float:
+    ...
