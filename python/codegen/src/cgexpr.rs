@@ -32,7 +32,7 @@ pub trait CGExpr<'a, 'ctx> {
 
 impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
     fn compile_expr(&mut self, expr: &ast::Expression) -> Result<Value<'ctx>, LLVMCompileError> {
-        self.set_source_location(expr.location);
+        self.set_loc(expr.location);
 
         use dsp_python_parser::ast::ExpressionType;
         match &expr.node {
@@ -60,7 +60,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
             },
             ExpressionType::String { value } => {
                 let v = try_get_constant_string(value).unwrap();
-                if self.get_fn_value().is_some() {
+                if self._fn_value.is_some() {
                     let value = Value::Str {
                         value: self
                             .builder
@@ -91,7 +91,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
             }
             ExpressionType::Compare { vals, ops } => self.compile_comparison(vals, ops),
             ExpressionType::Identifier { name } => {
-                let (value_type, pointer_value) = if let Some(fn_value) = self.get_fn_value() {
+                let (value_type, pointer_value) = if let Some(fn_value) = self._fn_value {
                     let llvm_variable = self.locals.load(&fn_value, name);
                     if let Some(llvm_variable) = llvm_variable {
                         llvm_variable
@@ -187,12 +187,11 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
             Some(f) => f,
             None => {
                 let func_name_mangled = mangling(&func_name, first_arg.get_type());
-                self.get_function(func_name_mangled.as_ref())
-                    .expect(&format!(
-                        "{:?}\nFunction '{}' is not defined",
-                        self.get_source_location(),
-                        func_name
-                    ))
+                if let Some(f) = self.get_function(&func_name_mangled) {
+                    f
+                } else {
+                    return err!(self, LLVMCompileErrorType::NameError, func_name_mangled);
+                }
             }
         };
 
@@ -229,7 +228,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 Value::Str { value } => args_value.push(BasicValueEnum::PointerValue(value)),
                 _ => panic!(
                     "{:?}\nNotImplemented argument type",
-                    self.get_source_location()
+                    self.get_loc()
                 ),
             }
         }
@@ -309,7 +308,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                                             .build_int_signed_rem(lhs_value, rhs_value, "mod"),
                                         _ => panic!(
                                             "{:?}\nNotImplemented {:?} operator for i16",
-                                            self.get_source_location(),
+                                            self.get_loc(),
                                             op
                                         ),
                                     },
@@ -356,7 +355,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                                 }
                                 _ => panic!(
                                     "{:?}\nNotImplemented {:?} operator for f32",
-                                    self.get_source_location(),
+                                    self.get_loc(),
                                     op
                                 ),
                             },

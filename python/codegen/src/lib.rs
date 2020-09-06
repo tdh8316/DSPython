@@ -3,6 +3,7 @@ use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::values::FunctionValue;
 
+use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
 use dsp_python_parser::ast;
 
 use crate::scope::{Locals, VariableMap};
@@ -45,20 +46,26 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         self.module.get_function(name)
     }
 
-    pub fn set_fn_value(&mut self, fn_value: Option<FunctionValue<'ctx>>) {
-        self._fn_value = fn_value;
+    pub fn set_fn_value(&mut self, fn_value: FunctionValue<'ctx>) {
+        self._fn_value = Some(fn_value);
     }
 
-    #[inline]
-    pub fn get_fn_value(&self) -> Option<FunctionValue<'ctx>> {
-        self._fn_value
+    pub fn get_fn_value(&self) -> Result<FunctionValue<'ctx>, LLVMCompileError> {
+        match self.module.get_function(name) {
+            Some(func) => Ok(func),
+            None => err!(
+                self,
+                LLVMCompileErrorType::NotImplemented,
+                "Attempted to get a function value outside function. Some features must be in the function."
+            )
+        }
     }
 
-    fn set_source_location(&mut self, location: ast::Location) {
+    fn set_loc(&mut self, location: ast::Location) {
         self._current_source_location = location;
     }
 
-    pub fn get_source_location(&self) -> ast::Location {
+    pub fn get_loc(&self) -> ast::Location {
         self._current_source_location
     }
 }

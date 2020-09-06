@@ -71,16 +71,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMString> {
     let to_compile_error =
         |parse_error| CompileError::from_parse_error(parse_error, source_path.clone());
-    let source = read_to_string(&source_path).expect(&format!(
-        "python: can't open file '{}': [Errno 2] No such file or directory",
-        source_path
-    ));
-    let source_ast = parse_program(&source)
-        .map_err(to_compile_error)
-        .expect(&format!(
-            "Failed to parse '{}' because of error above.",
-            source_path
-        ));
 
     let context = Context::create();
     let module = context.create_module(&source_path);
@@ -121,22 +111,25 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
     );
 
     generate_prototypes(compiler.cg.module, compiler.cg.context);
-    let builtins_libs: Vec<&str> = vec!["core/arduino_pins.py", "core/uno.py"];
+    let builtins_libs: Vec<&str> = vec![/*"core/arduino_pins.py", "core/uno.py"*/];
     for lib in builtins_libs.iter() {
         let to_compile_error =
             |parse_error| CompileError::from_parse_error(parse_error, lib.to_string());
-        let source = read_to_string(lib).expect(&format!(
-            "python: can't open file '{}': [Errno 2] No such file or directory",
-            lib,
-        ));
+        let source = read_to_string(lib)
+            .expect(&format!("dspython: can't read the core library '{}'", lib,));
         let core_ast = parse_program(&source)
             .map_err(to_compile_error)
-            .expect(&format!(
-                "Failed to parse a dspython core library '{}' because of error above.",
-                lib,
-            ));
+            .expect(&format!("dspython: can't parse the core library '{}'", lib,));
         compiler.compile(core_ast)?;
     }
+    let source = read_to_string(&source_path)
+        .expect(&format!("dspython: can't open file '{}'", source_path));
+    let source_ast = parse_program(&source)
+        .map_err(to_compile_error)
+        .expect(&format!(
+            "Failed to parse '{}' because of error above.",
+            source_path
+        ));
     compiler.compile(source_ast)?;
 
     compiler.run_pm();

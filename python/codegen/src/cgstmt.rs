@@ -38,7 +38,7 @@ pub trait CGStmt<'a, 'ctx> {
 
 impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
     fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError> {
-        self.set_source_location(stmt.location);
+        self.set_loc(stmt.location);
         use dsp_python_parser::ast::StatementType;
         match &stmt.node {
             StatementType::Expression { expression } => {
@@ -56,7 +56,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 if *is_async {
                     panic!(
                         "{:?}\nAsync function is not supported",
-                        self.get_source_location()
+                        self.get_loc()
                     )
                 }
                 let _decorators = decorator_list;
@@ -85,7 +85,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 let value = self.compile_expr(value)?;
                 let value_type = value.get_type();
 
-                if let Some(fn_value) = &self.get_fn_value() {
+                if let Some(fn_value) = &self._fn_value {
                     let llvm_var = self.locals.load(fn_value, name);
                     let pointer = if let Some(llvm_var) = llvm_var {
                         llvm_var.pointer_value()
@@ -108,7 +108,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
             }
             StatementType::Return { value } => {
                 // Outside function
-                if self.get_fn_value().is_none() {
+                if self._fn_value.is_none() {
                     return err!(
                         self,
                         LLVMCompileErrorType::SyntaxError,
@@ -259,8 +259,8 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
 
         self.builder.position_at_end(bb);
 
-        self.set_fn_value(Some(f));
-        self.locals.create(self.get_fn_value().unwrap());
+        self.set_fn_value(f);
+        self.locals.create(self.get_fn_value()?);
 
         for (i, bv) in f.get_param_iter().enumerate() {
             let v = if bv.is_int_value() {
@@ -299,7 +299,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
             self.builder.build_return(None);
         }
 
-        self.set_fn_value(None);
+        self._fn_value = None;
         Ok(())
     }
 
@@ -309,7 +309,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         body: &Vec<ast::Statement>,
         orelse: Option<&Vec<ast::Statement>>,
     ) -> Result<(), LLVMCompileError> {
-        let parent = self.get_fn_value().unwrap();
+        let parent = self.get_fn_value()?;
 
         let then_bb = self.context.append_basic_block(parent, "if.then");
         let else_bb = self.context.append_basic_block(parent, "if.else");
@@ -318,7 +318,8 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         let cond = cond.invoke_handler(cvhandler!(self));
 
         // Build the conditional branch.
-        self.builder.build_conditional_branch(cond, then_bb, else_bb);
+        self.builder
+            .build_conditional_branch(cond, then_bb, else_bb);
 
         // Emit at if.then.
         self.builder.position_at_end(then_bb);
@@ -350,7 +351,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         body: &ast::Suite,
         orelse: &Option<ast::Suite>,
     ) -> Result<(), LLVMCompileError> {
-        let parent = self.get_fn_value().unwrap();
+        let parent = self.get_fn_value()?;
 
         let while_bb = self.context.append_basic_block(parent, "while");
         let loop_bb = self.context.append_basic_block(parent, "while.body");
