@@ -1,17 +1,17 @@
 use std::option::Option::Some;
 
+use inkwell::{FloatPredicate, IntPredicate};
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::BasicValue;
-use inkwell::{FloatPredicate, IntPredicate};
 
 use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
-use dsp_compiler_value::value::{Value, ValueHandler};
+use dsp_compiler_value::value::{Value, ValueHandler, ValueType};
 use dsp_python_macros::*;
 use dsp_python_parser::ast;
 
 use crate::cgexpr::CGExpr;
-use crate::scope::LLVMVariableAccessor;
 use crate::CodeGen;
+use crate::scope::LLVMVariableAccessor;
 
 pub trait CGStmt<'a, 'ctx> {
     fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError>;
@@ -115,7 +115,36 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                         "'return' outside function"
                     );
                 }
-                // TODO: Fix return
+                if let Some(value) = value {
+                    let return_value = self.compile_expr(value)?;
+
+                    if return_value.get_type() == ValueType::Void {
+                        self.builder.build_return(None);
+                    } else {
+                        // Type check
+                        let fn_type = self.get_fn_value()?.get_type().get_return_type().expect(
+                            "No return type"
+                        );
+                        let value_type = return_value.to_basic_value().get_type();
+                        if fn_type != value_type {
+                            return err!(
+                                self,
+                                LLVMCompileErrorType::TypeError,
+                                format!("{:?}", fn_type),
+                                format!("{:?}", value_type)
+                            );
+                        }
+
+                        return_value.invoke_handler(
+                            ValueHandler::new()
+                                .handle_int(&|_, value| self.builder.build_return(Some(&value)))
+                                .handle_float(&|_, value| self.builder.build_return(Some(&value))),
+                        );
+                    }
+                } else {
+                    self.builder.build_return(None);
+                }
+                self.compile_context.returned = true;
                 Ok(())
             }
             StatementType::ImportFrom {
@@ -295,8 +324,21 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
             self.compile_stmt(statement)?;
         }
 
-        if f.get_type().get_return_type().is_none() && bb.get_terminator().is_none() {
-            self.builder.build_return(None);
+        if !self.compile_context.returned {
+            let frt = self.get_fn_value()?.get_type().get_return_type();
+            if let Some(frt) = frt {
+                if frt.is_int_type() {
+                    match frt.into_int_type().get_bit_width() {
+                        8 => { self.builder.build_return(Some(&self.context.i8_type().const_zero())); }
+                        16 => { self.builder.build_return(Some(&self.context.i16_type().const_zero())); }
+                        _ => { unimplemented!() }
+                    }
+                } else if frt.is_float_type() {
+                    self.builder.build_return(Some(&self.context.f32_type().const_zero()));
+                }
+            } else {
+                self.builder.build_return(None);
+            }
         }
 
         self._fn_value = None;
@@ -318,29 +360,37 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         let cond = cond.invoke_handler(cvhandler!(self));
 
         // Build the conditional branch.
-        self.builder
-            .build_conditional_branch(cond, then_bb, else_bb);
+        self.builder.build_conditional_branch(cond, then_bb, else_bb);
 
         // Emit at if.then.
         self.builder.position_at_end(then_bb);
+        self.compile_context.returned = false;
         for statement in body.iter() {
+            if self.compile_context.returned {
+                break;
+            }
             self.compile_stmt(statement)?;
         }
         // Then, unconditionally jump to the end block.
-        self.builder.build_unconditional_branch(end_bb);
+        if !self.compile_context.returned { self.builder.build_unconditional_branch(end_bb); }
 
         // Emit at if.else if present.
         self.builder.position_at_end(else_bb);
+        self.compile_context.returned = false;
         if let Some(statements) = orelse {
             for statement in statements.iter() {
+                if self.compile_context.returned {
+                    break;
+                }
                 self.compile_stmt(statement)?;
             }
         }
 
         // Then, unconditionally jump to the end block.
-        self.builder.build_unconditional_branch(end_bb);
+        if !self.compile_context.returned { self.builder.build_unconditional_branch(end_bb); }
 
         // Set the cursor at the end
+        self.compile_context.returned = false;
         self.builder.position_at_end(end_bb);
         Ok(())
     }

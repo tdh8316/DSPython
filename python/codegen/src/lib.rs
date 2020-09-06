@@ -13,6 +13,10 @@ pub mod scope;
 pub mod cgexpr;
 pub mod cgstmt;
 
+pub struct CompileContext {
+    returned: bool,
+}
+
 pub struct CodeGen<'a, 'ctx> {
     pub context: &'ctx Context,
     pub builder: &'a Builder<'ctx>,
@@ -22,6 +26,7 @@ pub struct CodeGen<'a, 'ctx> {
     _current_source_location: ast::Location,
     globals: VariableMap<'ctx>,
     locals: Locals<'ctx>,
+    compile_context: CompileContext,
 }
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
@@ -38,6 +43,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             _current_source_location: ast::Location::default(),
             globals: VariableMap::new(),
             locals: Locals::new(),
+            compile_context: CompileContext { returned: false },
         }
     }
 
