@@ -102,7 +102,7 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
     pm_builder.populate_module_pass_manager(&pass_manager);
 
     let mut compiler = Compiler::new(
-        source_path,
+        source_path.clone(),
         flags,
         &context,
         &builder,

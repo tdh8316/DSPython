@@ -51,7 +51,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
     }
 
     pub fn get_fn_value(&self) -> Result<FunctionValue<'ctx>, LLVMCompileError> {
-        match self.module.get_function(name) {
+        match self._fn_value {
             Some(func) => Ok(func),
             None => err!(
                 self,
