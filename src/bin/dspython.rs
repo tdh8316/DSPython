@@ -16,7 +16,8 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
         .long("upload")
         .short("u")
         .takes_value(true);
-    let arg_opt = Arg::with_name("opt_level").short("opt").takes_value(true);
+    let arg_opt = Arg::with_name("opt_level").short("o").takes_value(true);
+    let arg_keep_hex = Arg::with_name("keep_hex").long("--keep-hex").takes_value(false);
 
     app.usage(
         r#"usage: dspython [-u PORT] [-o OPT_LEVEL] FILE
@@ -27,12 +28,13 @@ positional arguments:
 optional arguments:
     -u PORT, --upload PORT
                      Serial Port to upload hex
-    -opt OPT_LEVEL
+    -o OPT_LEVEL
                      LLVM Optimization level"#,
     )
     .arg(arg_file)
     .arg(arg_opt)
     .arg(arg_port)
+        .arg(arg_keep_hex)
     .get_matches()
 }
 
@@ -74,7 +76,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Remove the hex file after finishing upload
-    std::fs::remove_file(hex).unwrap();
+    if! matches.is_present("keep_hex") {
+        std::fs::remove_file(hex).unwrap();
+    }
 
     Ok(())
 }
