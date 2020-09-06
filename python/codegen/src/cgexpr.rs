@@ -1,6 +1,6 @@
 use either::Either;
-use inkwell::{FloatPredicate, IntPredicate};
 use inkwell::values::{BasicValueEnum, InstructionOpcode};
+use inkwell::{FloatPredicate, IntPredicate};
 
 use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
 use dsp_compiler_mangler::mangling;
@@ -270,60 +270,69 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
         Ok(a.invoke_handler(
             ValueHandler::new()
                 .handle_int(&|_, lhs_value| {
-                    b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
-                        // Div operator to int returns a float.
-                        if op == &Operator::Div {
-                            return Value::F32 {
-                                value: self.builder.build_float_div(
-                                    lhs_value.const_signed_to_float(self.context.f32_type()),
-                                    rhs_value.const_signed_to_float(self.context.f32_type()),
-                                    "div",
-                                ),
-                            };
-                        }
-                        Value::I16 {
-                            value: match op {
-                                Operator::Add {} => {
-                                    self.builder.build_int_add(lhs_value, rhs_value, "add")
+                    b.invoke_handler(
+                        ValueHandler::new()
+                            .handle_int(&|_, rhs_value| {
+                                // Div operator to int returns a float.
+                                if op == &Operator::Div {
+                                    return Value::F32 {
+                                        value: self.builder.build_float_div(
+                                            lhs_value
+                                                .const_signed_to_float(self.context.f32_type()),
+                                            rhs_value
+                                                .const_signed_to_float(self.context.f32_type()),
+                                            "div",
+                                        ),
+                                    };
                                 }
-                                Operator::Sub {} => {
-                                    self.builder.build_int_sub(lhs_value, rhs_value, "sub")
+                                Value::I16 {
+                                    value: match op {
+                                        Operator::Add {} => {
+                                            self.builder.build_int_add(lhs_value, rhs_value, "add")
+                                        }
+                                        Operator::Sub {} => {
+                                            self.builder.build_int_sub(lhs_value, rhs_value, "sub")
+                                        }
+                                        Operator::Mult => {
+                                            self.builder.build_int_mul(lhs_value, rhs_value, "mul")
+                                        }
+                                        Operator::Div => {
+                                            // In Python, dividing int by int returns a float,
+                                            // which is implemented above.
+                                            unimplemented!()
+                                        }
+                                        Operator::FloorDiv => self
+                                            .builder
+                                            .build_int_signed_div(lhs_value, rhs_value, "fld"),
+                                        Operator::Mod => self
+                                            .builder
+                                            .build_int_signed_rem(lhs_value, rhs_value, "mod"),
+                                        _ => panic!(
+                                            "{:?}\nNotImplemented {:?} operator for i16",
+                                            self.get_source_location(),
+                                            op
+                                        ),
+                                    },
                                 }
-                                Operator::Mult => {
-                                    self.builder.build_int_mul(lhs_value, rhs_value, "mul")
-                                }
-                                Operator::Div => {
-                                    // In Python, dividing int by int returns a float,
-                                    // which is implemented above.
-                                    unimplemented!()
-                                }
-                                Operator::FloorDiv => self
-                                    .builder
-                                    .build_int_signed_div(lhs_value, rhs_value, "fld"),
-                                Operator::Mod => self
-                                    .builder
-                                    .build_int_signed_rem(lhs_value, rhs_value, "mod"),
-                                _ => panic!(
-                                    "{:?}\nNotImplemented {:?} operator for i16",
-                                    self.get_source_location(),
-                                    op
-                                ),
-                            },
-                        }
-                    }).handle_float(&|_, rhs_value| {
-                        Value::F32 {
-                            value: match op {
-                                Operator::Mult => self.builder.build_float_mul(
-                                    self.builder.build_cast(InstructionOpcode::SIToFP, lhs_value, self.context.f32_type(), "sitofp").into_float_value(),
-                                    rhs_value,
-                                    "mul",
-                                ),
-                                _ => {
-                                    unimplemented!()
-                                }
-                            }
-                        }
-                    }))
+                            })
+                            .handle_float(&|_, rhs_value| Value::F32 {
+                                value: match op {
+                                    Operator::Mult => self.builder.build_float_mul(
+                                        self.builder
+                                            .build_cast(
+                                                InstructionOpcode::SIToFP,
+                                                lhs_value,
+                                                self.context.f32_type(),
+                                                "sitofp",
+                                            )
+                                            .into_float_value(),
+                                        rhs_value,
+                                        "mul",
+                                    ),
+                                    _ => unimplemented!(),
+                                },
+                            }),
+                    )
                 })
                 .handle_float(&|_, lhs_value| {
                     b.invoke_handler(

@@ -1,13 +1,15 @@
-from uno import *
-
-
 def setup() -> None:
-    serial_begin(9600)
+    a = 0
 
-    count = 0
-    while count < 10:
-        print(count)
-        count = count + 1
+    a_is_one = False
+    a_is_two = True
+
+    if a_is_one:
+        a = 1
+    elif a_is_two:
+        a = 2
+
+    print(a)
 
     return None
 

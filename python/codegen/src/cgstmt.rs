@@ -1,17 +1,17 @@
 use std::option::Option::Some;
 
-use inkwell::{FloatPredicate, IntPredicate};
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::BasicValue;
+use inkwell::{FloatPredicate, IntPredicate};
 
 use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
-use dsp_compiler_value::value::{Value, ValueHandler, ValueType};
+use dsp_compiler_value::value::{Value, ValueHandler};
 use dsp_python_macros::*;
 use dsp_python_parser::ast;
 
 use crate::cgexpr::CGExpr;
-use crate::CodeGen;
 use crate::scope::LLVMVariableAccessor;
+use crate::CodeGen;
 
 pub trait CGStmt<'a, 'ctx> {
     fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError>;

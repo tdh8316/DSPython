@@ -1,9 +1,8 @@
 def analog_input_to_digital_pin(p: int) -> int:
-    value = -1
     if p < 6:
-        value = p + 14
-
-    return value
+        return p + 14
+    else:
+        return -1
 
 
 def digital_pin_to_interrupt(p: int) -> int:
@@ -12,6 +11,7 @@ def digital_pin_to_interrupt(p: int) -> int:
     elif p == 3:
         return 1
 
+    # Not an interrupt
     return -1
 
 

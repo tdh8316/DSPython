@@ -16,7 +16,7 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
         .long("upload")
         .short("u")
         .takes_value(true);
-    let arg_opt = Arg::with_name("opt_level").short("o").takes_value(true);
+    let arg_opt = Arg::with_name("opt_level").short("opt").takes_value(true);
 
     app.usage(
         r#"usage: dspython [-u PORT] [-o OPT_LEVEL] FILE
@@ -27,7 +27,7 @@ positional arguments:
 optional arguments:
     -u PORT, --upload PORT
                      Serial Port to upload hex
-    -o OPT_LEVEL
+    -opt OPT_LEVEL
                      LLVM Optimization level"#,
     )
     .arg(arg_file)
@@ -60,6 +60,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if let Some(port) = port {
         upload_to(&hex, port);
+    }
+
+    {
+        let hex_file = std::fs::File::open(&hex)?;
+
+        if hex_file.metadata().unwrap().len() > 30 * 1024 {
+            println!(
+                "WARNING: The size of the result file ({}KB) is larger than 30KB.",
+                hex_file.metadata().unwrap().len() / 1024
+            );
+        }
     }
 
     // Remove the hex file after finishing upload
