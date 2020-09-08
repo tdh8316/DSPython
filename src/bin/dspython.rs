@@ -17,7 +17,15 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
         .short("u")
         .takes_value(true);
     let arg_opt = Arg::with_name("opt_level").short("o").takes_value(true);
-    let arg_keep_hex = Arg::with_name("keep_hex").long("--keep-hex").takes_value(false);
+    let arg_keep_hex = Arg::with_name("keep_hex")
+        .long("--keep-hex")
+        .takes_value(false);
+    let arg_include_libs = Arg::with_name("include_libs")
+        .long("--include-libs")
+        .short("I")
+        .takes_value(true)
+        .multiple(true)
+        .required(false);
 
     app.usage(
         r#"usage: dspython [-u PORT] [-o OPT_LEVEL] FILE
@@ -34,7 +42,8 @@ optional arguments:
     .arg(arg_file)
     .arg(arg_opt)
     .arg(arg_port)
-        .arg(arg_keep_hex)
+    .arg(arg_keep_hex)
+    .arg(arg_include_libs)
     .get_matches()
 }
 
@@ -49,14 +58,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     let file = matches.value_of("file").unwrap();
     let port = matches.value_of("port");
 
-    let opt_level = matches.value_of("opt_level").unwrap_or("3").parse::<u8>()?;
+    let optimization_level = matches.value_of("opt_level").unwrap_or("3").parse::<u8>()?;
+    let include_libs = if let Some(libs) = matches.values_of("include_libs") {
+        libs.collect::<Vec<&str>>()
+    } else {
+        vec!["core/arduino_pins.py", "core/uno.py"]
+    };
 
-    let compiler_flags = CompilerFlags::new(opt_level);
+    let compiler_flags = CompilerFlags::new(optimization_level, include_libs);
 
     let assembly = compile(file.to_string(), compiler_flags)?;
 
     let ll = format!("{}.ll", file);
-    write(&ll, assembly.to_string()).unwrap();
+    { write(&ll, assembly.to_string())?; }
 
     let hex = objcopy(&ll);
 
@@ -76,7 +90,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Remove the hex file after finishing upload
-    if! matches.is_present("keep_hex") {
+    if !matches.is_present("keep_hex") {
         std::fs::remove_file(hex).unwrap();
     }
 

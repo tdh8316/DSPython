@@ -25,7 +25,7 @@ type CompileResult<T> = Result<T, LLVMCompileError>;
 
 pub struct Compiler<'a, 'ctx> {
     pub source_path: String,
-    pub compiler_flags: CompilerFlags,
+    pub compiler_flags: CompilerFlags<'a>,
 
     cg: CodeGen<'a, 'ctx>,
     pass_manager: PassManager<Module<'ctx>>,
@@ -34,7 +34,7 @@ pub struct Compiler<'a, 'ctx> {
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
     pub fn new(
         source_path: String,
-        compiler_flags: CompilerFlags,
+        compiler_flags: CompilerFlags<'a>,
         context: &'ctx Context,
         builder: &'a Builder<'ctx>,
         module: &'a Module<'ctx>,
@@ -103,7 +103,7 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
 
     let mut compiler = Compiler::new(
         source_path.clone(),
-        flags,
+        flags.clone(),
         &context,
         &builder,
         &module,
@@ -111,7 +111,7 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
     );
 
     generate_prototypes(compiler.cg.module, compiler.cg.context);
-    let builtins_libs: Vec<&str> = vec![/*"core/arduino_pins.py", "core/uno.py"*/];
+    let builtins_libs = flags.include_libs;
     for lib in builtins_libs.iter() {
         let to_compile_error =
             |parse_error| CompileError::from_parse_error(parse_error, lib.to_string());
