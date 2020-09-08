@@ -10,7 +10,7 @@ ARDUINO_DIR = sys.argv[1]
 
 is_windows = os.name == "nt"
 
-CC = "{ARDUINO_DIR}/hardware/tools/avr/bin/avr-gcc".format(ARDUINO_DIR=ARDUINO_DIR)
+C = "{ARDUINO_DIR}/hardware/tools/avr/bin/avr-gcc".format(ARDUINO_DIR=ARDUINO_DIR)
 CPP = "{ARDUINO_DIR}/hardware/tools/avr/bin/avr-g++".format(ARDUINO_DIR=ARDUINO_DIR)
 AR = "{ARDUINO_DIR}/hardware/tools/avr/bin/avr-ar".format(ARDUINO_DIR=ARDUINO_DIR)
 OBJ_COPY = "{ARDUINO_DIR}/hardware/tools/avr/bin/avr-objcopy".format(
@@ -31,7 +31,7 @@ GENERAL_FLAGS = (
     )
 )
 CPP_FLAGS = "{} -fno-exceptions".format(GENERAL_FLAGS)
-CC_FLAGS = GENERAL_FLAGS
+C_FLAGS = GENERAL_FLAGS
 
 # location of include files
 INCLUDE_FILES = (
@@ -55,13 +55,13 @@ if not os.path.isdir(OUT_PREFIX):
 
 compile_commands = """
 llc -filetype=obj {INPUT} -o {INPUT}.o
-{CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}WInterrupts.c -o {OUT_PREFIX}WInterrupts.c.o
-{CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring.c -o {OUT_PREFIX}wiring.c.o
-{CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_analog.c -o {OUT_PREFIX}wiring_analog.c.o
-{CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_digital.c -o {OUT_PREFIX}wiring_digital.c.o
-{CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_pulse.c -o {OUT_PREFIX}wiring_pulse.c.o
-{CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_shift.c -o {OUT_PREFIX}wiring_shift.c.o
-{CC} {CC_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}hooks.c -o {OUT_PREFIX}hooks.c.o
+{C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}WInterrupts.c -o {OUT_PREFIX}WInterrupts.c.o
+{C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring.c -o {OUT_PREFIX}wiring.c.o
+{C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_analog.c -o {OUT_PREFIX}wiring_analog.c.o
+{C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_digital.c -o {OUT_PREFIX}wiring_digital.c.o
+{C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_pulse.c -o {OUT_PREFIX}wiring_pulse.c.o
+{C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_shift.c -o {OUT_PREFIX}wiring_shift.c.o
+{C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}hooks.c -o {OUT_PREFIX}hooks.c.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}CDC.cpp -o {OUT_PREFIX}CDC.cpp.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}HardwareSerial.cpp -o {OUT_PREFIX}HardwareSerial.cpp.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}IPAddress.cpp -o {OUT_PREFIX}IPAddress.cpp.o
@@ -109,18 +109,17 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}Serial.cc.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}Builtins.cc.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}LLVMArduinoBuiltins.cc.o
-{CC} -w -Os -g -flto -fuse-linker-plugin -Wl,--gc-sections -mmcu={MCU} -o {INPUT}.elf {INPUT}.o {OUT_PREFIX}core.a -lm
+{C} -w -Os -g -flto -fuse-linker-plugin -Wl,--gc-sections -mmcu={MCU} -o {INPUT}.elf {INPUT}.o {OUT_PREFIX}core.a -lm
 {OBJ_COPY} -O ihex -j .eeprom {OBJ} .eeprom=0 {INPUT}.elf {INPUT}.eep
 {OBJ_COPY} -O ihex -R .eeprom {INPUT}.elf {INPUT}.hex
 """.format(
-    CC=CC,
+    C=C,
     CPP=CPP,
     AR=AR,
     OBJ_COPY=OBJ_COPY,
     MCU=MCU,
-    GENERAL_FLAGS=GENERAL_FLAGS,
     CPP_FLAGS=CPP_FLAGS,
-    CC_FLAGS=CC_FLAGS,
+    C_FLAGS=C_FLAGS,
     INCLUDE_FILES=INCLUDE_FILES,
     LIBRARY_DIR=LIBRARY_DIR,
     OBJ="--set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma",
