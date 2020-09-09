@@ -226,10 +226,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 }
                 Value::F32 { value } => args_value.push(BasicValueEnum::FloatValue(value)),
                 Value::Str { value } => args_value.push(BasicValueEnum::PointerValue(value)),
-                _ => panic!(
-                    "{:?}\nNotImplemented argument type",
-                    self.get_loc()
-                ),
+                _ => panic!("{:?}\nNotImplemented argument type", self.get_loc()),
             }
         }
 
