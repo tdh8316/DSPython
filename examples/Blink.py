@@ -1,12 +1,4 @@
-from core.arduino import *
-
-LED_BUILTIN = 13
-
-INPUT = 0
-OUTPUT = 1
-
-LOW = 0
-HIGH = 1
+from arduino import *
 
 
 def setup():

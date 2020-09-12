@@ -18,7 +18,7 @@ DSPython uses [LLVM](http://llvm.org/) to provide a way to compile programs writ
 Here is an example program that blinks the built-in LED of Arduino Uno:
 ```python
 # Blink the built-in LED of Arduino Uno!
-from core.arduino import *
+from arduino import *
 
 def setup():
     pin_mode(13, 1)

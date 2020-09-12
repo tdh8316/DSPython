@@ -1,18 +1,22 @@
+from arduino import *
+
+button_pin = 2
+led_pin = 13
+
+
 def setup() -> None:
-    a = 0
-
-    a_is_one = False
-    a_is_two = True
-
-    if a_is_one:
-        a = 1
-    elif a_is_two:
-        a = 2
-
-    print(a)
+    pin_mode(button_pin, INPUT)
+    pin_mode(led_pin, OUTPUT)
 
     return None
 
 
 def loop() -> None:
+    button_state = digital_read(button_pin)
+
+    if button_state == HIGH:
+        digital_write(led_pin, HIGH)
+    else:
+        digital_write(led_pin, LOW)
+
     return None

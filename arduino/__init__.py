@@ -2,10 +2,8 @@
 This module provides access to built-in Arduino functions
 """
 
-# noinspection PyUnresolvedReferences
-from core.arduino_pins import *
-# noinspection PyUnresolvedReferences
-from core.uno import *
+from arduino.uno_pins import *
+from arduino.constants import *
 
 
 def pin_mode(_pin: int, _mode: int) -> None:

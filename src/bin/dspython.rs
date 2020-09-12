@@ -20,6 +20,9 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
     let arg_keep_hex = Arg::with_name("keep_hex")
         .long("--keep-hex")
         .takes_value(false);
+    let arg_emit_llvm = Arg::with_name("emit_llvm")
+        .long("--emit-llvm")
+        .takes_value(false);
     let arg_include_libs = Arg::with_name("include_libs")
         .long("--include-libs")
         .short("I")
@@ -43,6 +46,7 @@ optional arguments:
     .arg(arg_opt)
     .arg(arg_port)
     .arg(arg_keep_hex)
+    .arg(arg_emit_llvm)
     .arg(arg_include_libs)
     .get_matches()
 }
@@ -62,7 +66,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let include_libs = if let Some(libs) = matches.values_of("include_libs") {
         libs.collect::<Vec<&str>>()
     } else {
-        vec!["core/arduino_pins.py", "core/uno.py"]
+        vec![
+            "arduino/constants.py",
+            "arduino/uno_pins.py",
+            "arduino/math.py",
+        ]
     };
 
     let compiler_flags = CompilerFlags::new(optimization_level, include_libs);
@@ -70,7 +78,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let assembly = compile(file.to_string(), compiler_flags)?;
 
     let ll = format!("{}.ll", file);
-    { write(&ll, assembly.to_string())?; }
+    {
+        write(&ll, assembly.to_string())?;
+    }
 
     let hex = objcopy(&ll);
 
@@ -92,6 +102,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Remove the hex file after finishing upload
     if !matches.is_present("keep_hex") {
         std::fs::remove_file(hex).unwrap();
+    }
+
+    // Remove the llvm ir
+    if !matches.is_present("emit_llvm") {
+        std::fs::remove_file(ll).unwrap();
     }
 
     Ok(())

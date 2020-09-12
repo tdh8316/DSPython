@@ -110,9 +110,7 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
         pass_manager,
     );
 
-    generate_prototypes(compiler.cg.module, compiler.cg.context);
-    let builtins_libs = flags.include_libs;
-    for lib in builtins_libs.iter() {
+    for lib in flags.include_libs.iter() {
         let to_compile_error =
             |parse_error| CompileError::from_parse_error(parse_error, lib.to_string());
         let source = read_to_string(lib)
@@ -122,6 +120,7 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
             .expect(&format!("dspython: can't parse the core library '{}'", lib,));
         compiler.compile(core_ast)?;
     }
+    generate_prototypes(compiler.cg.module, compiler.cg.context);
     let source = read_to_string(&source_path)
         .expect(&format!("dspython: can't open file '{}'", source_path));
     let source_ast = parse_program(&source)

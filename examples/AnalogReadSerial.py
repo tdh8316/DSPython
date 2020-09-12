@@ -1,4 +1,4 @@
-from core.arduino import *
+from arduino import *
 
 
 def setup():
