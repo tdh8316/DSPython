@@ -198,9 +198,9 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         body: &ast::Suite,
         returns: &Option<ast::Expression>,
     ) -> Result<(), LLVMCompileError> {
+        // The types and names of arguments
         let mut args_vec: Vec<BasicTypeEnum> = vec![];
-        let mut arg_names = vec![];
-
+        let mut arg_names: Vec<&String> = vec![];
         for arg in args.args.iter() {
             arg_names.push(&arg.arg);
             if arg.annotation.is_none() {
@@ -236,13 +236,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
             }
         }
 
-        let mut return_type = &String::new();
-        if let Some(annotation) = returns {
+        // The type to return value of this function
+        let return_type = if let Some(annotation) = returns {
             match &annotation.node {
-                ast::ExpressionType::Identifier { name } => {
-                    return_type = name;
-                }
-                ast::ExpressionType::None => {}
+                ast::ExpressionType::Identifier { name } => name.to_owned(),
+                ast::ExpressionType::None => "None".to_string(),
                 _ => {
                     return err!(
                         self,
@@ -251,54 +249,49 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                     );
                 }
             }
-        }
-
-        let f = match return_type.as_str() {
-            "int8" => self.module.add_function(
-                name,
-                self.context.i8_type().fn_type(&args_vec, false),
-                None,
-            ),
-            "int" => self.module.add_function(
-                name,
-                self.context.i16_type().fn_type(&args_vec, false),
-                None,
-            ),
-            "float" => self.module.add_function(
-                name,
-                self.context.f32_type().fn_type(&args_vec, false),
-                None,
-            ),
-            "" | "None" => self.module.add_function(
-                name,
-                self.context.void_type().fn_type(&args_vec, false),
-                None,
-            ),
-
-            _ => {
-                return err!(
-                    self,
-                    LLVMCompileErrorType::NotImplemented,
-                    format!("Unknown return type {}", return_type)
-                );
-            }
+        } else {
+            "None".to_string()
         };
-        let bb = self.context.append_basic_block(f, "");
 
+        let f = self.module.add_function(
+            name,
+            match return_type.as_str() {
+                // i8 for arduino builtins
+                "int8" => self.context.i8_type().fn_type(&args_vec, false),
+
+                "int" => self.context.i16_type().fn_type(&args_vec, false),
+                "float" => self.context.f32_type().fn_type(&args_vec, false),
+                "None" => self.context.void_type().fn_type(&args_vec, false),
+                _ => {
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::NotImplemented,
+                        format!("Unknown return type {}", return_type)
+                    );
+                }
+            },
+            None,
+        );
+
+        // Create an entry block
+        let bb = self.context.append_basic_block(f, "");
         self.builder.position_at_end(bb);
         self.compile_context.returned = false;
 
+        // Create local scope
         self.set_fn_value(f);
         self.locals.create(self.get_fn_value()?);
 
+        // Assign arguments
         for (i, bv) in f.get_param_iter().enumerate() {
+            let arg_name = arg_names[i];
             let v = if bv.is_int_value() {
-                bv.into_int_value().set_name(arg_names[i]);
+                bv.into_int_value().set_name(arg_name);
                 Value::I16 {
                     value: bv.into_int_value(),
                 }
             } else if bv.is_float_value() {
-                bv.into_float_value().set_name(arg_names[i]);
+                bv.into_float_value().set_name(arg_name);
                 Value::F32 {
                     value: bv.into_float_value(),
                 }
@@ -311,11 +304,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
             };
             let pointer = self
                 .builder
-                .build_alloca(v.get_type().to_basic_type(self.context), arg_names[i]);
+                .build_alloca(v.get_type().to_basic_type(self.context), arg_name);
             self.builder.build_store(pointer, bv);
             self.locals.set(
                 &self.get_fn_value().unwrap(),
-                arg_names[i],
+                arg_name,
                 (v.get_type(), pointer),
             );
         }
