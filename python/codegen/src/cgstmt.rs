@@ -154,7 +154,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 let _level = level;
                 let target = module.as_ref().expect("Unknown module name");
                 let _names = names;
-                if target == "core.arduino" {
+                if target.contains("arduino") {
                     // Builtin
                 } else {
                     return err!(
@@ -286,6 +286,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         let bb = self.context.append_basic_block(f, "");
 
         self.builder.position_at_end(bb);
+        self.compile_context.returned = false;
 
         self.set_fn_value(f);
         self.locals.create(self.get_fn_value()?);
@@ -324,7 +325,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         }
 
         if !self.compile_context.returned {
-            let frt = self.get_fn_value()?.get_type().get_return_type();
+            let frt = self.get_fn_value().unwrap().get_type().get_return_type();
             if let Some(frt) = frt {
                 if frt.is_int_type() {
                     match frt.into_int_type().get_bit_width() {
