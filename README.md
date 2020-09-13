@@ -12,8 +12,7 @@ DSPython is a restricted Python subset compiler intended for use in Arduino.
 The [Micropython](https://github.com/micropython/micropython) project aims to put an implementation of Python 3 on microcontrollers, however, not available on Arduino.
 
 DSPython uses [LLVM](http://llvm.org/) to provide a way to compile programs written in the Python programming language.
-
->**Note that it runs directly on the Arduino board, not through serial communication.**
+It generates LLVM IR, which is intended to be similar to C++'s. Accordingly, the DSPython is internally not a Python at all.
 
 Here is an example program that blinks the built-in LED of Arduino Uno:
 ```python
@@ -34,7 +33,7 @@ To compile and upload this source, you can specific the serial port to upload by
 For example, this compiles and uploads the [blink example](https://github.com/tdh8316/dsp/tree/master/examples/Blink.py) to the Arduino:
 
 ```
-dsp examples/Blink.py --upload YOUR_PORT
+dspython examples/Blink.py --upload YOUR_PORT
 ```
 
 ## Usage
@@ -58,7 +57,7 @@ optional arguments:
 # Contributing
 Contributions are more than welcome!
 
-I have trouble with continuing this project because it's my first use of rust.
+I have trouble with continuing this project because this is my first use of rust.
 Please share your opinions. Any ideas would be highly appreciated!
 
 ### Project goals
@@ -73,10 +72,10 @@ These are not impossible, but currently not our goals.
 ### Never
  - Complete Python implementation
  - Compile all python standard libraries
- - Support Multi-core
+ - Support threading or asynchronous functions
 
 ## The reason this project exists
-I wanted to program Arduino in other languages as well as C++.
+I wanted to program Arduino in other languages as well as C++ and thought the Python language would be a good choice.
 But because it is impossible to bring standard Python to Arduino, I decided to make a Python compiler that is available to upload directly to the Arduino.
 
 The distinctive feature of DSP is that it uses LLVM internally instead of emitting [C++](https://arduino.github.io/arduino-cli/sketch-build-process/).
