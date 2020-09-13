@@ -9,6 +9,7 @@ repository = "https://github.com/tdh8316/dspython"
 
 [dependencies]
 dsp_compiler_error = { path = "./error" }
+dsp_compiler_value = { path = "./value" }
 dsp_python_codegen = { path = "../python/codegen" }
 dsp_python_parser = { path = "../python/parser" }
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm10-0" }
