@@ -236,6 +236,7 @@ name = "dsp_compiler"
 version = "0.1.0"
 dependencies = [
  "dsp_compiler_error",
+ "dsp_compiler_value",
  "dsp_python_codegen",
  "dsp_python_parser",
  "inkwell",

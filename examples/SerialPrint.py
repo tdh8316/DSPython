@@ -1,3 +1,9 @@
+"""
+This is the DSPython implementation of the Arduino example.
+
+Created for DSPython by Donghyeok Tak <tdh8316@naver.com>
+"""
+
 from arduino import *
 
 

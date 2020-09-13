@@ -17,6 +17,7 @@ use dsp_python_parser::{ast, CompileError};
 
 pub use crate::flags::*;
 use crate::llvm_prototypes::generate_prototypes;
+use dsp_compiler_value::convert::try_get_constant_string;
 
 pub mod flags;
 mod llvm_prototypes;
@@ -29,6 +30,19 @@ pub struct Compiler<'a, 'ctx> {
 
     cg: CodeGen<'a, 'ctx>,
     pass_manager: PassManager<Module<'ctx>>,
+}
+
+fn get_doc(body: &[ast::Statement]) -> (&[ast::Statement], Option<String>) {
+    if let Some((val, body_rest)) = body.split_first() {
+        if let ast::StatementType::Expression { ref expression } = val.node {
+            if let ast::ExpressionType::String { value } = &expression.node {
+                if let Some(value) = try_get_constant_string(value) {
+                    return (body_rest, Some(value));
+                }
+            }
+        }
+    }
+    (body, None)
 }
 
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
@@ -49,7 +63,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     }
 
     pub fn compile(&mut self, program: ast::Program) -> CompileResult<()> {
-        for statement in program.statements.iter() {
+        let (statements, _doc_string) = get_doc(&program.statements);
+
+        for statement in statements.iter() {
             if let ast::StatementType::Expression { ref expression } = statement.node {
                 self.cg.compile_expr(&expression)?;
             } else {
