@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::fs::write;
+use std::fs::{remove_file, write, File};
 
 use clap::{App, Arg, ArgMatches};
 
@@ -89,7 +89,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     {
-        let hex_file = std::fs::File::open(&hex)?;
+        let hex_file = File::open(&hex)?;
 
         if hex_file.metadata().unwrap().len() > 30 * 1024 {
             println!(
@@ -101,12 +101,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Remove the hex file after finishing upload
     if !matches.is_present("keep_hex") {
-        std::fs::remove_file(hex).unwrap();
+        remove_file(hex).unwrap();
     }
 
     // Remove the llvm ir
     if !matches.is_present("emit_llvm") {
-        std::fs::remove_file(ll).unwrap();
+        remove_file(ll).unwrap();
     }
 
     Ok(())

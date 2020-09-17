@@ -47,6 +47,29 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
         None,
     );
 
+    // Math
+    module.add_function(
+        "sin",
+        context
+            .f32_type()
+            .fn_type(&[context.f32_type().into()], false),
+        None,
+    );
+    module.add_function(
+        "cos",
+        context
+            .f32_type()
+            .fn_type(&[context.f32_type().into()], false),
+        None,
+    );
+    module.add_function(
+        "tan",
+        context
+            .f32_type()
+            .fn_type(&[context.f32_type().into()], false),
+        None,
+    );
+
     // Python builtins
     module.add_function(
         "print__i__",

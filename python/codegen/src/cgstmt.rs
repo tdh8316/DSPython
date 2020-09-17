@@ -365,6 +365,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
 
         // Emit at if.then.
         self.builder.position_at_end(then_bb);
+        // TODO: Return in if statement
         self.compile_context.returned = false;
         for statement in body.iter() {
             if self.compile_context.returned {

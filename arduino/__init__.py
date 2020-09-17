@@ -18,6 +18,11 @@ from arduino.constants import *
 from arduino.uno_pins import *
 
 
+# noinspection PyShadowingBuiltins
+def print(_str: object) -> None:
+    ...
+
+
 def pin_mode(_pin: int, _mode: int) -> None:
     ...
 

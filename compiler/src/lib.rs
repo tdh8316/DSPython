@@ -9,6 +9,7 @@ use inkwell::targets::{TargetData, TargetTriple};
 use inkwell::OptimizationLevel;
 
 use dsp_compiler_error::{LLVMCompileError, LLVMCompileErrorType};
+use dsp_compiler_value::convert::try_get_constant_string;
 use dsp_python_codegen::cgexpr::CGExpr;
 use dsp_python_codegen::cgstmt::CGStmt;
 use dsp_python_codegen::CodeGen;
@@ -17,7 +18,6 @@ use dsp_python_parser::{ast, CompileError};
 
 pub use crate::flags::*;
 use crate::llvm_prototypes::generate_prototypes;
-use dsp_compiler_value::convert::try_get_constant_string;
 
 pub mod flags;
 mod llvm_prototypes;
@@ -126,6 +126,9 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
         pass_manager,
     );
 
+    // Including all default functions is too expensive.
+    // TODO: Compile only used functions, not all
+    /*
     for lib in flags.include_libs.iter() {
         let to_compile_error =
             |parse_error| CompileError::from_parse_error(parse_error, lib.to_string());
@@ -136,6 +139,7 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
             .expect(&format!("dspython: can't parse the core library '{}'", lib,));
         compiler.compile(core_ast)?;
     }
+    */
     generate_prototypes(compiler.cg.module, compiler.cg.context);
     let source = read_to_string(&source_path)
         .expect(&format!("dspython: can't open file '{}'", source_path));
