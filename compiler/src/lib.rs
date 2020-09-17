@@ -84,7 +84,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     }
 }
 
-pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMString> {
+pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMString> {
     let to_compile_error =
         |parse_error| CompileError::from_parse_error(parse_error, source_path.clone());
 
@@ -143,12 +143,11 @@ pub fn compile(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMS
     generate_prototypes(compiler.cg.module, compiler.cg.context);
     let source = read_to_string(&source_path)
         .expect(&format!("dspython: can't open file '{}'", source_path));
-    let source_ast = parse_program(&source)
-        .map_err(to_compile_error)
-        .expect(&format!(
-            "Failed to parse '{}' because of error above.",
-            source_path
-        ));
+    let source_ast = parse_program(&source).map_err(to_compile_error);
+    if let Err(e) = source_ast {
+        panic!("ParseError: {}", e);
+    }
+    let source_ast = source_ast.unwrap();
     compiler.compile(source_ast)?;
 
     compiler.run_pm();

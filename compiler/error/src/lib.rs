@@ -29,9 +29,6 @@ impl Error for LLVMCompileError {}
 
 impl fmt::Display for LLVMCompileError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(loc) = self.location {
-            writeln!(f, "at {:?}:", loc)?;
-        }
         let error_desc = match &self.error {
             LLVMCompileErrorType::NameError(target) => format!("name '{}' is not defined", target),
             LLVMCompileErrorType::SyntaxError(desc) => format!("{}", desc),
@@ -41,6 +38,16 @@ impl fmt::Display for LLVMCompileError {
             LLVMCompileErrorType::NotImplemented(desc) => format!("{}", desc),
         };
 
-        write!(f, "{}: {}", &self.error.to_string(), error_desc)
+        let loc_string = if let Some(loc) = self.location {
+            format!("File '<Unknown>', line {}:{}", loc.column(), loc.row())
+        } else {
+            format!("File '<Unknown>', line <Unknown>:<Unknown>")
+        };
+
+        eprintln!("Traceback (most recent call last):");
+        eprintln!("  {}", loc_string);
+        eprintln!("{}: {}", &self.error.to_string(), error_desc);
+
+        write!(f, "LLVMCompileError: at {}: {}: {}", loc_string, &self.error.to_string(), error_desc)
     }
 }

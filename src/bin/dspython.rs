@@ -4,7 +4,7 @@ use std::fs::{remove_file, write, File};
 use clap::{App, Arg, ArgMatches};
 
 use dsp_builder::objcopy;
-use dsp_compiler::{compile, CompilerFlags};
+use dsp_compiler::{get_assembly, CompilerFlags};
 use dspython::upload_to;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -75,7 +75,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let compiler_flags = CompilerFlags::new(optimization_level, include_libs);
 
-    let assembly = compile(file.to_string(), compiler_flags)?;
+    let assembly = match get_assembly(file.to_string(), compiler_flags) {
+        Ok(llvm_string) => llvm_string,
+        Err(e) => panic!("{}", e),
+    };
 
     let ll = format!("{}.ll", file);
     {

@@ -190,7 +190,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 if let Some(f) = self.get_function(&func_name_mangled) {
                     f
                 } else {
-                    return err!(self, LLVMCompileErrorType::NameError, func_name_mangled);
+                    return err!(self, LLVMCompileErrorType::NameError, &func_name);
                 }
             }
         };

@@ -16,6 +16,7 @@ pub enum LLVMCompileErrorType {
 
 impl fmt::Display for LLVMCompileErrorType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        let this = format!("{:?}", self);
+        write!(f, "{}", this.split("(").collect::<Vec<&str>>()[0])
     }
 }
