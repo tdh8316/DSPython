@@ -387,6 +387,8 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                             ast::Comparison::NotEqual => IntPredicate::NE,
                             ast::Comparison::Greater => IntPredicate::SGT,
                             ast::Comparison::Less => IntPredicate::SLT,
+                            ast::Comparison::GreaterOrEqual => IntPredicate::SGE,
+                            ast::Comparison::LessOrEqual => IntPredicate::SLE,
                             _ => panic!("Unsupported int predicate"),
                         };
                         Value::Bool {
@@ -406,6 +408,8 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                             ast::Comparison::NotEqual => FloatPredicate::ONE,
                             ast::Comparison::Greater => FloatPredicate::OGT,
                             ast::Comparison::Less => FloatPredicate::OLT,
+                            ast::Comparison::GreaterOrEqual => FloatPredicate::OGE,
+                            ast::Comparison::LessOrEqual => FloatPredicate::OLE,
                             _ => panic!("Unsupported float predicate"),
                         };
                         Value::Bool {
