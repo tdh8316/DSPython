@@ -5,24 +5,42 @@ Fibonacci series
 from arduino import *
 
 
-def fib(n: int):
+def fib_while(n: int) -> int:
     a = 0
     b = 1
-    s = 0
+    res = 0
     count = 1
 
-    while count <= n:
-        print(s)
-
+    while count < n:
         count = count + 1
         a = b
-        b = s
-        s = a + b
+        b = res
+        res = a + b
+
+    return res
+
+
+def fib_recursion(n: int) -> int:
+    if n <= 0:
+        print("n must be an integer greater than zero!")
+        # If the function ends without a return statement
+        # DSPython automatically adds `return 0` that fits the type of this function
+    elif n == 1:
+        return 0
+    elif n == 2:
+        return 1
+    else:
+        return fib_recursion(n - 1) + fib_recursion(n - 2)
 
 
 def setup():
     serial_begin(9600)
-    fib(10)
+
+    print("fib(10) Using loop:")
+    print(fib_while(10))
+
+    print("fib(10) Using recursion:")
+    print(fib_recursion(10))
 
 
 def loop():
