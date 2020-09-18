@@ -48,6 +48,12 @@ impl fmt::Display for LLVMCompileError {
         eprintln!("  {}", loc_string);
         eprintln!("{}: {}", &self.error.to_string(), error_desc);
 
-        write!(f, "LLVMCompileError: at {}: {}: {}", loc_string, &self.error.to_string(), error_desc)
+        write!(
+            f,
+            "LLVMCompileError: at {}: {}: {}",
+            loc_string,
+            &self.error.to_string(),
+            error_desc
+        )
     }
 }

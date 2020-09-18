@@ -54,7 +54,11 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 returns,
             } => {
                 if *is_async {
-                    panic!("{:?}\nAsync function is not supported", self.get_loc())
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::NotImplemented,
+                        "Async functions are not supported."
+                    );
                 }
                 let _decorators = decorator_list;
                 self.compile_stmt_function_def(name, args, body, returns)?;

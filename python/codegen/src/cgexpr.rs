@@ -64,7 +64,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                     let value = Value::Str {
                         value: self
                             .builder
-                            .build_global_string_ptr(v.as_str(), ".str")
+                            .build_global_string_ptr(&v, ".str")
                             .as_pointer_value(),
                     };
                     Ok(value)
@@ -84,12 +84,6 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 let _keywords = keywords;
                 self.compile_expr_call(function, args)
             }
-            ExpressionType::Binop { a, op, b } => {
-                let a = self.compile_expr(a)?;
-                let b = self.compile_expr(b)?;
-                self.compile_op(a, op, b)
-            }
-            ExpressionType::Compare { vals, ops } => self.compile_comparison(vals, ops),
             ExpressionType::Identifier { name } => {
                 let (value_type, pointer_value) = if let Some(fn_value) = self._fn_value {
                     let llvm_variable = self.locals.load(&fn_value, name);
@@ -117,13 +111,12 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 );
                 Ok(value)
             }
-            ExpressionType::None => Ok(Value::Void),
-            ExpressionType::True => Ok(Value::Bool {
-                value: self.context.bool_type().const_int(1, false),
-            }),
-            ExpressionType::False => Ok(Value::Bool {
-                value: self.context.bool_type().const_int(0, false),
-            }),
+            ExpressionType::Binop { a, op, b } => {
+                let a = self.compile_expr(a)?;
+                let b = self.compile_expr(b)?;
+                self.compile_op(a, op, b)
+            }
+            ExpressionType::Compare { vals, ops } => self.compile_comparison(vals, ops),
             ExpressionType::Unop { op, a } => match &a.node {
                 ExpressionType::Number { value } => match value {
                     ast::Number::Integer { value } => match op {
@@ -136,7 +129,13 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                             };
                             Ok(value)
                         }
-                        _ => panic!("NotImplemented unop for i16."),
+                        _ => {
+                            return err!(
+                                self,
+                                LLVMCompileErrorType::NotImplemented,
+                                format!("Unimplemented unop {:?} for integer", op)
+                            );
+                        }
                     },
                     ast::Number::Float { value } => match op {
                         ast::UnaryOperator::Neg => {
@@ -145,7 +144,13 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                             };
                             Ok(value)
                         }
-                        _ => panic!("NotImplemented unop for f32."),
+                        _ => {
+                            return err!(
+                                self,
+                                LLVMCompileErrorType::NotImplemented,
+                                format!("Unimplemented unop {:?} for floating number", op)
+                            );
+                        }
                     },
                     ast::Number::Complex { real: _, imag: _ } => {
                         return err!(
@@ -155,8 +160,21 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                         );
                     }
                 },
-                _ => panic!("NotImplemented type for unop"),
+                _ => {
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::NotImplemented,
+                        format!("unary operator for {:?} is not implemented.", a.node)
+                    );
+                }
             },
+            ExpressionType::True => Ok(Value::Bool {
+                value: self.context.bool_type().const_int(1, false),
+            }),
+            ExpressionType::False => Ok(Value::Bool {
+                value: self.context.bool_type().const_int(0, false),
+            }),
+            ExpressionType::None => Ok(Value::Void),
             _ => err!(
                 self,
                 LLVMCompileErrorType::NotImplemented,
@@ -181,11 +199,13 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
             }
         };
 
+        // Compile the first argument to get type signature
         let first_arg = self.compile_expr(args.clone().first().unwrap())?;
 
-        let func = match self.get_function(func_name.as_ref()) {
+        let func = match self.get_function(&func_name) {
             Some(f) => f,
             None => {
+                // Simple mangling from the type of the first argument
                 let func_name_mangled = mangling(&func_name, first_arg.get_type());
                 if let Some(f) = self.get_function(&func_name_mangled) {
                     f
@@ -202,11 +222,15 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
         for (i, expr_proto) in args.iter().zip(args_proto.iter()).enumerate() {
             let expr = expr_proto.0;
             let proto = expr_proto.1;
+
+            // Prevent compile the same argument twice
             let value = if i == 0 {
                 first_arg
             } else {
                 self.compile_expr(expr)?
             };
+
+            // Convert the type of argument according to the signature
             match value {
                 Value::I8 { value } => {
                     let cast = self.builder.build_int_cast(
@@ -226,17 +250,24 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 }
                 Value::F32 { value } => args_value.push(BasicValueEnum::FloatValue(value)),
                 Value::Str { value } => args_value.push(BasicValueEnum::PointerValue(value)),
-                _ => panic!("{:?}\nNotImplemented argument type", self.get_loc()),
+                _ => {
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::NotImplemented,
+                        format!("Unimplemented argument type '{:?}'", value.get_type())
+                    );
+                }
             }
         }
 
         let res = self.builder.build_call(func, args_value.as_slice(), "call");
         res.set_tail_call(true);
 
+        // Returned value
         let value = match res.try_as_basic_value() {
             // Return type
-            Either::Left(bv) => Value::from_basic_value(
-                if bv.is_int_value() {
+            Either::Left(bv) => {
+                let vt = if bv.is_int_value() {
                     let iv = bv.into_int_value();
 
                     match iv.get_type().get_bit_width() {
@@ -248,9 +279,9 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                     ValueType::F32
                 } else {
                     unreachable!()
-                },
-                bv,
-            ),
+                };
+                Value::from_basic_value(vt, bv)
+            }
             Either::Right(_) => Value::Void,
         };
         Ok(value)
@@ -303,28 +334,24 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                                         Operator::Mod => self
                                             .builder
                                             .build_int_signed_rem(lhs_value, rhs_value, "mod"),
-                                        _ => panic!(
-                                            "{:?}\nNotImplemented {:?} operator for i16",
-                                            self.get_loc(),
-                                            op
-                                        ),
+                                        _ => panic!("Unimplemented {:?} operator for i16", op),
                                     },
                                 }
                             })
                             .handle_float(&|_, rhs_value| Value::F32 {
                                 value: match op {
-                                    Operator::Mult => self.builder.build_float_mul(
-                                        self.builder
+                                    Operator::Mult => {
+                                        let cast = self
+                                            .builder
                                             .build_cast(
                                                 InstructionOpcode::SIToFP,
                                                 lhs_value,
                                                 self.context.f32_type(),
                                                 "sitofp",
                                             )
-                                            .into_float_value(),
-                                        rhs_value,
-                                        "mul",
-                                    ),
+                                            .into_float_value();
+                                        self.builder.build_float_mul(cast, rhs_value, "mul")
+                                    }
                                     _ => unimplemented!(),
                                 },
                             }),
@@ -350,11 +377,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                                 Operator::Mod => {
                                     self.builder.build_float_rem(lhs_value, rhs_value, "mod")
                                 }
-                                _ => panic!(
-                                    "{:?}\nNotImplemented {:?} operator for f32",
-                                    self.get_loc(),
-                                    op
-                                ),
+                                _ => panic!("Unimplemented {:?} operator for f32", op),
                             },
                         }),
                     )
@@ -389,7 +412,10 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                             ast::Comparison::Less => IntPredicate::SLT,
                             ast::Comparison::GreaterOrEqual => IntPredicate::SGE,
                             ast::Comparison::LessOrEqual => IntPredicate::SLE,
-                            _ => panic!("Unsupported int predicate"),
+                            _ => panic!(
+                                "Unsupported {:?} comparison operator for integer",
+                                ops.first().unwrap()
+                            ),
                         };
                         Value::Bool {
                             value: self.builder.build_int_compare(
@@ -410,7 +436,10 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                             ast::Comparison::Less => FloatPredicate::OLT,
                             ast::Comparison::GreaterOrEqual => FloatPredicate::OGE,
                             ast::Comparison::LessOrEqual => FloatPredicate::OLE,
-                            _ => panic!("Unsupported float predicate"),
+                            _ => panic!(
+                                "Unsupported {:?} comparison operator for floating number",
+                                ops.first().unwrap()
+                            ),
                         };
                         Value::Bool {
                             value: self.builder.build_float_compare(
