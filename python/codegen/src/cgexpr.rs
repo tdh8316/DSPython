@@ -299,6 +299,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 .handle_int(&|_, lhs_value| {
                     b.invoke_handler(
                         ValueHandler::new()
+                            // Between int and int
                             .handle_int(&|_, rhs_value| {
                                 // Div operator to int returns a float.
                                 if op == &Operator::Div {
@@ -338,6 +339,7 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                                     },
                                 }
                             })
+                            // Between int and float
                             .handle_float(&|_, rhs_value| Value::F32 {
                                 value: match op {
                                     Operator::Mult => {
@@ -352,34 +354,54 @@ impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
                                             .into_float_value();
                                         self.builder.build_float_mul(cast, rhs_value, "mul")
                                     }
-                                    _ => unimplemented!(),
+                                    _ => panic!("Unimplemented {:?} operator for i16 and f32", op),
                                 },
                             }),
                     )
                 })
                 .handle_float(&|_, lhs_value| {
                     b.invoke_handler(
-                        ValueHandler::new().handle_float(&|_, rhs_value| Value::F32 {
-                            value: match op {
-                                Operator::Add {} => {
-                                    self.builder.build_float_add(lhs_value, rhs_value, "add")
-                                }
-                                Operator::Sub {} => {
-                                    self.builder.build_float_sub(lhs_value, rhs_value, "sub")
-                                }
-                                Operator::Mult => {
-                                    self.builder.build_float_mul(lhs_value, rhs_value, "mul")
-                                }
-                                Operator::Div => {
-                                    self.builder.build_float_div(lhs_value, rhs_value, "div")
-                                }
-                                Operator::FloorDiv => unimplemented!(),
-                                Operator::Mod => {
-                                    self.builder.build_float_rem(lhs_value, rhs_value, "mod")
-                                }
-                                _ => panic!("Unimplemented {:?} operator for f32", op),
-                            },
-                        }),
+                        ValueHandler::new()
+                            // Between float and float
+                            .handle_float(&|_, rhs_value| Value::F32 {
+                                value: match op {
+                                    Operator::Add {} => {
+                                        self.builder.build_float_add(lhs_value, rhs_value, "add")
+                                    }
+                                    Operator::Sub {} => {
+                                        self.builder.build_float_sub(lhs_value, rhs_value, "sub")
+                                    }
+                                    Operator::Mult => {
+                                        self.builder.build_float_mul(lhs_value, rhs_value, "mul")
+                                    }
+                                    Operator::Div => {
+                                        self.builder.build_float_div(lhs_value, rhs_value, "div")
+                                    }
+                                    Operator::FloorDiv => unimplemented!(),
+                                    Operator::Mod => {
+                                        self.builder.build_float_rem(lhs_value, rhs_value, "mod")
+                                    }
+                                    _ => panic!("Unimplemented {:?} operator for f32", op),
+                                },
+                            })
+                            // Between float and int
+                            .handle_int(&|_, rhs_value| Value::F32 {
+                                value: match op {
+                                    Operator::Mult => {
+                                        let cast = self
+                                            .builder
+                                            .build_cast(
+                                                InstructionOpcode::SIToFP,
+                                                rhs_value,
+                                                self.context.f32_type(),
+                                                "sitofp",
+                                            )
+                                            .into_float_value();
+                                        self.builder.build_float_mul(lhs_value, cast, "mul")
+                                    }
+                                    _ => panic!("Unimplemented {:?} operator for f32 and i16", op),
+                                },
+                            }),
                     )
                 }),
         ))
