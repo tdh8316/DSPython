@@ -24,7 +24,7 @@ pub trait CGStmt<'a, 'ctx> {
     ) -> Result<(), LLVMCompileError>;
     fn compile_stmt_conditional(
         &mut self,
-        cond: Value<'ctx>,
+        test: &ast::Expression,
         body: &Vec<ast::Statement>,
         orelse: Option<&Vec<ast::Statement>>,
     ) -> Result<(), LLVMCompileError>;
@@ -170,14 +170,12 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
                 Ok(())
             }
             StatementType::If { test, body, orelse } => {
-                let cond = self.compile_expr(test)?;
-
                 match orelse {
                     None /*Only if:*/ => {
-                        self.compile_stmt_conditional(cond, body, None)?;
+                        self.compile_stmt_conditional(test, body, None)?;
                     }
                     Some(statements) => {
-                        self.compile_stmt_conditional(cond, body, Some(statements))?;
+                        self.compile_stmt_conditional(test, body, Some(statements))?;
                     }
                 }
                 Ok(())
@@ -351,7 +349,7 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
 
     fn compile_stmt_conditional(
         &mut self,
-        cond: Value<'ctx>,
+        test: &ast::Expression,
         body: &Vec<ast::Statement>,
         orelse: Option<&Vec<ast::Statement>>,
     ) -> Result<(), LLVMCompileError> {
@@ -361,7 +359,9 @@ impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
         let else_bb = self.context.append_basic_block(parent, "if.else");
         let end_bb = self.context.append_basic_block(parent, "if.end");
 
-        let cond = cond.invoke_handler(cvhandler!(self));
+        // Compile the condition as i1.
+        let test = self.compile_expr(test)?;
+        let cond = test.invoke_handler(cvhandler!(self));
 
         // Build the conditional branch.
         self.builder
