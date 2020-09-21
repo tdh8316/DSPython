@@ -14,6 +14,7 @@ pub use crate::macros::*;
 pub struct LLVMCompileError {
     pub error: LLVMCompileErrorType,
     pub location: Option<ast::Location>,
+    pub file: Option<String>,
 }
 
 impl LLVMCompileError {
@@ -21,6 +22,7 @@ impl LLVMCompileError {
         LLVMCompileError {
             error: exception,
             location,
+            file: None,
         }
     }
 }
@@ -39,9 +41,17 @@ impl fmt::Display for LLVMCompileError {
         };
 
         let loc_string = if let Some(loc) = self.location {
-            format!("File '<Unknown>', line {}:{}", loc.column(), loc.row())
+            format!(
+                "File '{}', line {}:{}",
+                self.file.as_ref().unwrap_or(&"<Unknown>".to_string()),
+                loc.column(),
+                loc.row()
+            )
         } else {
-            format!("File '<Unknown>', line <Unknown>:<Unknown>")
+            format!(
+                "File '{}', line <Unknown>:<Unknown>",
+                self.file.as_ref().unwrap_or(&"<Unknown>".to_string())
+            )
         };
 
         eprintln!("Traceback (most recent call last):");

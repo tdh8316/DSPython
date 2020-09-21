@@ -117,6 +117,7 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
     });
     pm_builder.populate_module_pass_manager(&pass_manager);
 
+    // Create Compiler instance
     let mut compiler = Compiler::new(
         source_path.clone(),
         flags.clone(),
@@ -126,29 +127,23 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
         pass_manager,
     );
 
-    // Including all default functions is too expensive.
-    // TODO: Compile only used functions, not all
-    /*
-    for lib in flags.include_libs.iter() {
-        let to_compile_error =
-            |parse_error| CompileError::from_parse_error(parse_error, lib.to_string());
-        let source = read_to_string(lib)
-            .expect(&format!("dspython: can't read the core library '{}'", lib,));
-        let core_ast = parse_program(&source)
-            .map_err(to_compile_error)
-            .expect(&format!("dspython: can't parse the core library '{}'", lib,));
-        compiler.compile(core_ast)?;
-    }
-    */
-    generate_prototypes(compiler.cg.module, compiler.cg.context);
     let source = read_to_string(&source_path)
         .expect(&format!("dspython: can't open file '{}'", source_path));
-    let source_ast = parse_program(&source).map_err(to_compile_error);
-    if let Err(e) = source_ast {
+    let parsed_ast = parse_program(&source).map_err(to_compile_error);
+    if let Err(e) = parsed_ast {
         panic!("ParseError: {}", e);
     }
-    let source_ast = source_ast.unwrap();
-    compiler.compile(source_ast)?;
+
+    // Including all default functions is too expensive.
+    // TODO: Compile only used functions, not all
+    generate_prototypes(compiler.cg.module, compiler.cg.context);
+    let source_ast = parsed_ast.unwrap();
+    if let Err(mut e) = compiler.compile(source_ast) {
+        // Enrich error
+        e.file = Some(compiler.source_path);
+
+        return Err(e);
+    }
 
     compiler.run_pm();
     Ok(compiler.emit())
