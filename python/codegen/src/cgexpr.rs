@@ -10,28 +10,11 @@ use dsp_python_parser::ast;
 
 use crate::CodeGen;
 
-pub trait CGExpr<'a, 'ctx> {
-    fn compile_expr(&mut self, expr: &ast::Expression) -> Result<Value<'ctx>, LLVMCompileError>;
-    fn compile_expr_call(
+impl<'a, 'ctx> CodeGen<'a, 'ctx> {
+    pub fn compile_expr(
         &mut self,
-        func: &Box<ast::Expression>,
-        args: &Vec<ast::Expression>,
-    ) -> Result<Value<'ctx>, LLVMCompileError>;
-    fn compile_op(
-        &mut self,
-        a: Value<'ctx>,
-        op: &ast::Operator,
-        b: Value<'ctx>,
-    ) -> Result<Value<'ctx>, LLVMCompileError>;
-    fn compile_comparison(
-        &mut self,
-        vals: &[ast::Expression],
-        ops: &[ast::Comparison],
-    ) -> Result<Value<'ctx>, LLVMCompileError>;
-}
-
-impl<'a, 'ctx> CGExpr<'a, 'ctx> for CodeGen<'a, 'ctx> {
-    fn compile_expr(&mut self, expr: &ast::Expression) -> Result<Value<'ctx>, LLVMCompileError> {
+        expr: &ast::Expression,
+    ) -> Result<Value<'ctx>, LLVMCompileError> {
         self.set_loc(expr.location);
 
         use dsp_python_parser::ast::ExpressionType;

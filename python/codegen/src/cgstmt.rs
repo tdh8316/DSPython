@@ -9,35 +9,11 @@ use dsp_compiler_value::value::{Value, ValueHandler, ValueType};
 use dsp_python_macros::*;
 use dsp_python_parser::ast;
 
-use crate::cgexpr::CGExpr;
 use crate::scope::LLVMVariableAccessor;
 use crate::CodeGen;
 
-pub trait CGStmt<'a, 'ctx> {
-    fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError>;
-    fn compile_stmt_function_def(
-        &mut self,
-        name: &String,
-        args: &Box<ast::Parameters>,
-        body: &ast::Suite,
-        returns: &Option<ast::Expression>,
-    ) -> Result<(), LLVMCompileError>;
-    fn compile_stmt_conditional(
-        &mut self,
-        test: &ast::Expression,
-        body: &Vec<ast::Statement>,
-        orelse: Option<&Vec<ast::Statement>>,
-    ) -> Result<(), LLVMCompileError>;
-    fn compile_stmt_while(
-        &mut self,
-        test: &ast::Expression,
-        body: &ast::Suite,
-        orelse: &Option<ast::Suite>,
-    ) -> Result<(), LLVMCompileError>;
-}
-
-impl<'a, 'ctx> CGStmt<'a, 'ctx> for CodeGen<'a, 'ctx> {
-    fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError> {
+impl<'a, 'ctx> CodeGen<'a, 'ctx> {
+    pub fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError> {
         self.set_loc(stmt.location);
         use dsp_python_parser::ast::StatementType;
         match &stmt.node {

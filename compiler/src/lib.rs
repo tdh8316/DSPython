@@ -10,8 +10,6 @@ use inkwell::OptimizationLevel;
 
 use dsp_compiler_error::{LLVMCompileError, LLVMCompileErrorType};
 use dsp_compiler_value::convert::try_get_constant_string;
-use dsp_python_codegen::cgexpr::CGExpr;
-use dsp_python_codegen::cgstmt::CGStmt;
 use dsp_python_codegen::CodeGen;
 use dsp_python_parser::parser::parse_program;
 use dsp_python_parser::{ast, CompileError};
