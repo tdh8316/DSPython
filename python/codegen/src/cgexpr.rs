@@ -94,12 +94,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 );
                 Ok(value)
             }
-            ExpressionType::Binop { a, op, b } => {
-                let a = self.compile_expr(a)?;
-                let b = self.compile_expr(b)?;
-                self.compile_op(a, op, b)
-            }
             ExpressionType::Compare { vals, ops } => self.compile_comparison(vals, ops),
+            ExpressionType::Binop { a, op, b } => self.compile_bin_op(a, op, b),
+            ExpressionType::BoolOp { op, values } => self.compile_bool_op(op, values),
             ExpressionType::Unop { op, a } => match &a.node {
                 ExpressionType::Number { value } => match value {
                     ast::Number::Integer { value } => match op {
@@ -270,13 +267,84 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         Ok(value)
     }
 
-    fn compile_op(
+    fn compile_comparison(
         &mut self,
-        a: Value<'ctx>,
+        vals: &Vec<ast::Expression>,
+        ops: &Vec<ast::Comparison>,
+    ) -> Result<Value<'ctx>, LLVMCompileError> {
+        if ops.len() > 1 || vals.len() > 2 {
+            return err!(
+                self,
+                LLVMCompileErrorType::NotImplemented,
+                "Chained comparison is not implemented."
+            );
+        }
+
+        let a = self.compile_expr(vals.first().unwrap())?;
+        let b = self.compile_expr(vals.last().unwrap())?;
+
+        Ok(a.invoke_handler(
+            ValueHandler::new()
+                .handle_int(&|_, lhs_value| {
+                    b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
+                        let int_predicate = match ops.first().unwrap() {
+                            ast::Comparison::Equal => IntPredicate::EQ,
+                            ast::Comparison::NotEqual => IntPredicate::NE,
+                            ast::Comparison::Greater => IntPredicate::SGT,
+                            ast::Comparison::Less => IntPredicate::SLT,
+                            ast::Comparison::GreaterOrEqual => IntPredicate::SGE,
+                            ast::Comparison::LessOrEqual => IntPredicate::SLE,
+                            _ => panic!(
+                                "Unsupported {:?} comparison operator for integer",
+                                ops.first().unwrap()
+                            ),
+                        };
+                        Value::Bool {
+                            value: self.builder.build_int_compare(
+                                int_predicate,
+                                lhs_value,
+                                rhs_value,
+                                "a",
+                            ),
+                        }
+                    }))
+                })
+                .handle_float(&|_, lhs_value| {
+                    b.invoke_handler(ValueHandler::new().handle_float(&|_, rhs_value| {
+                        let float_predicate = match ops.first().unwrap() {
+                            ast::Comparison::Equal => FloatPredicate::OEQ,
+                            ast::Comparison::NotEqual => FloatPredicate::ONE,
+                            ast::Comparison::Greater => FloatPredicate::OGT,
+                            ast::Comparison::Less => FloatPredicate::OLT,
+                            ast::Comparison::GreaterOrEqual => FloatPredicate::OGE,
+                            ast::Comparison::LessOrEqual => FloatPredicate::OLE,
+                            _ => panic!(
+                                "Unsupported {:?} comparison operator for floating number",
+                                ops.first().unwrap()
+                            ),
+                        };
+                        Value::Bool {
+                            value: self.builder.build_float_compare(
+                                float_predicate,
+                                lhs_value,
+                                rhs_value,
+                                "a",
+                            ),
+                        }
+                    }))
+                }),
+        ))
+    }
+
+    fn compile_bin_op(
+        &mut self,
+        a: &ast::Expression,
         op: &ast::Operator,
-        b: Value<'ctx>,
+        b: &ast::Expression,
     ) -> Result<Value<'ctx>, LLVMCompileError> {
         use dsp_python_parser::ast::Operator;
+        let a = self.compile_expr(a)?;
+        let b = self.compile_expr(b)?;
         Ok(a.invoke_handler(
             ValueHandler::new()
                 .handle_int(&|_, lhs_value| {
@@ -390,72 +458,11 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         ))
     }
 
-    fn compile_comparison(
+    fn compile_bool_op(
         &mut self,
-        vals: &[ast::Expression],
-        ops: &[ast::Comparison],
+        op: &ast::BooleanOperator,
+        values: &Vec<ast::Expression>,
     ) -> Result<Value<'ctx>, LLVMCompileError> {
-        if ops.len() > 1 || vals.len() > 2 {
-            return err!(
-                self,
-                LLVMCompileErrorType::NotImplemented,
-                "Chained comparison is not implemented."
-            );
-        }
-
-        let a = self.compile_expr(vals.first().unwrap())?;
-        let b = self.compile_expr(vals.last().unwrap())?;
-
-        Ok(a.invoke_handler(
-            ValueHandler::new()
-                .handle_int(&|_, lhs_value| {
-                    b.invoke_handler(ValueHandler::new().handle_int(&|_, rhs_value| {
-                        let int_predicate = match ops.first().unwrap() {
-                            ast::Comparison::Equal => IntPredicate::EQ,
-                            ast::Comparison::NotEqual => IntPredicate::NE,
-                            ast::Comparison::Greater => IntPredicate::SGT,
-                            ast::Comparison::Less => IntPredicate::SLT,
-                            ast::Comparison::GreaterOrEqual => IntPredicate::SGE,
-                            ast::Comparison::LessOrEqual => IntPredicate::SLE,
-                            _ => panic!(
-                                "Unsupported {:?} comparison operator for integer",
-                                ops.first().unwrap()
-                            ),
-                        };
-                        Value::Bool {
-                            value: self.builder.build_int_compare(
-                                int_predicate,
-                                lhs_value,
-                                rhs_value,
-                                "a",
-                            ),
-                        }
-                    }))
-                })
-                .handle_float(&|_, lhs_value| {
-                    b.invoke_handler(ValueHandler::new().handle_float(&|_, rhs_value| {
-                        let float_predicate = match ops.first().unwrap() {
-                            ast::Comparison::Equal => FloatPredicate::OEQ,
-                            ast::Comparison::NotEqual => FloatPredicate::ONE,
-                            ast::Comparison::Greater => FloatPredicate::OGT,
-                            ast::Comparison::Less => FloatPredicate::OLT,
-                            ast::Comparison::GreaterOrEqual => FloatPredicate::OGE,
-                            ast::Comparison::LessOrEqual => FloatPredicate::OLE,
-                            _ => panic!(
-                                "Unsupported {:?} comparison operator for floating number",
-                                ops.first().unwrap()
-                            ),
-                        };
-                        Value::Bool {
-                            value: self.builder.build_float_compare(
-                                float_predicate,
-                                lhs_value,
-                                rhs_value,
-                                "a",
-                            ),
-                        }
-                    }))
-                }),
-        ))
+        unimplemented!()
     }
 }
