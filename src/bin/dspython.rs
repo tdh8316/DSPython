@@ -11,22 +11,29 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 
 fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
-    let arg_file = Arg::with_name("file").required(true).help("The source file");
-    let arg_port = Arg::with_name("port").help("Serial port to upload your work")
+    let arg_file = Arg::with_name("file")
+        .required(true)
+        .help("The source file");
+    let arg_port = Arg::with_name("port")
+        .help("Serial port to upload your work")
         .long("upload")
         .short("u")
         .takes_value(true);
-    let arg_opt = Arg::with_name("opt_level").help("LLVM Optimization level. Must be in the range of 0 to 3")
+    let arg_opt = Arg::with_name("opt_level")
+        .help("LLVM Optimization level. Must be in the range of 0 to 3")
         .long("--opt-level")
         .short("o")
         .takes_value(true);
-    let arg_remove_hex = Arg::with_name("remove_hex").help("Remove the hex file after finishing compilation")
+    let arg_remove_hex = Arg::with_name("remove_hex")
+        .help("Remove the hex file after finishing compilation")
         .long("--remove-hex")
         .takes_value(false);
-    let arg_emit_llvm = Arg::with_name("emit_llvm").help("Emit LLVM IR")
+    let arg_emit_llvm = Arg::with_name("emit_llvm")
+        .help("Emit LLVM IR")
         .long("--emit-llvm")
         .takes_value(false);
-    let arg_include_libs = Arg::with_name("include_libs").help("Manually specific core libraries to include")
+    let arg_include_libs = Arg::with_name("include_libs")
+        .help("Manually specific core libraries to include")
         .long("--include-libs")
         .short("I")
         .takes_value(true)
@@ -81,7 +88,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         let hex_file = File::open(&hex)?;
         let file_size = hex_file.metadata().unwrap().len();
 
-        println!("The result is written to {} ({}KB of 30KB)", &hex, file_size / 1024);
+        println!(
+            "The result is written to {} ({}KB of 30KB)",
+            &hex,
+            file_size / 1024
+        );
 
         if file_size > 30 * 1024 {
             println!(
