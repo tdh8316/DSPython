@@ -1,28 +1,17 @@
 """
-Fibonacci series
+DSPython test
 """
 
 from arduino import *
 
 
-def fib(n: int):
-    a = 0
-    b = 1
-    s = 0
-    count = 1
-
-    while count <= n:
-        print(s)
-
-        count = count + 1
-        a = b
-        b = s
-        s = a + b
-
-
 def setup():
     serial_begin(9600)
-    fib(10)
+
+    print(6 / 3.2)
+    print(7.4 - 6.9)
+    print(6974 / 69.74)
+    print(0.1 * 10)
 
 
 def loop():
