@@ -11,22 +11,22 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 
 fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
-    let arg_file = Arg::with_name("file").required(true);
-    let arg_port = Arg::with_name("port")
+    let arg_file = Arg::with_name("file").required(true).help("The source file");
+    let arg_port = Arg::with_name("port").help("Serial port to upload your work")
         .long("upload")
         .short("u")
         .takes_value(true);
-    let arg_opt = Arg::with_name("opt_level")
+    let arg_opt = Arg::with_name("opt_level").help("LLVM Optimization level. Must be in the range of 0 to 3")
         .long("--opt-level")
         .short("o")
         .takes_value(true);
-    let arg_keep_hex = Arg::with_name("keep_hex")
-        .long("--keep-hex")
+    let arg_remove_hex = Arg::with_name("remove_hex").help("Remove the hex file after finishing compilation")
+        .long("--remove-hex")
         .takes_value(false);
-    let arg_emit_llvm = Arg::with_name("emit_llvm")
+    let arg_emit_llvm = Arg::with_name("emit_llvm").help("Emit LLVM IR")
         .long("--emit-llvm")
         .takes_value(false);
-    let arg_include_libs = Arg::with_name("include_libs")
+    let arg_include_libs = Arg::with_name("include_libs").help("Manually specific core libraries to include")
         .long("--include-libs")
         .short("I")
         .takes_value(true)
@@ -36,7 +36,7 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
     app.arg(arg_file)
         .arg(arg_opt)
         .arg(arg_port)
-        .arg(arg_keep_hex)
+        .arg(arg_remove_hex)
         .arg(arg_emit_llvm)
         .arg(arg_include_libs)
         .get_matches()
@@ -77,24 +77,26 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let hex = objcopy(&ll);
+    {
+        let hex_file = File::open(&hex)?;
+        let file_size = hex_file.metadata().unwrap().len();
+
+        println!("The result is written to {} ({}KB of 30KB)", &hex, file_size / 1024);
+
+        if file_size > 30 * 1024 {
+            println!(
+                "WARNING: The size of the result file ({}KB) is larger than 30KB.",
+                file_size / 1024
+            );
+        }
+    }
 
     if let Some(port) = port {
         upload_to(&hex, port);
     }
 
-    {
-        let hex_file = File::open(&hex)?;
-
-        if hex_file.metadata().unwrap().len() > 30 * 1024 {
-            println!(
-                "WARNING: The size of the result file ({}KB) is larger than 30KB.",
-                hex_file.metadata().unwrap().len() / 1024
-            );
-        }
-    }
-
     // Remove the hex file after finishing upload
-    if !matches.is_present("keep_hex") {
+    if matches.is_present("remove_hex") {
         remove_file(hex).unwrap();
     }
 

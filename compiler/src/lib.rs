@@ -1,18 +1,19 @@
 use std::fs::read_to_string;
+use std::io::Write;
 
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
+use inkwell::OptimizationLevel;
 use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::support::LLVMString;
 use inkwell::targets::{TargetData, TargetTriple};
-use inkwell::OptimizationLevel;
 
 use dsp_compiler_error::{LLVMCompileError, LLVMCompileErrorType};
 use dsp_compiler_value::convert::try_get_constant_string;
 use dsp_python_codegen::CodeGen;
-use dsp_python_parser::parser::parse_program;
 use dsp_python_parser::{ast, CompileError};
+use dsp_python_parser::parser::parse_program;
 
 pub use crate::flags::*;
 use crate::llvm_prototypes::generate_prototypes;
@@ -83,6 +84,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 }
 
 pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMString> {
+    print!("Compiling {}...", &source_path);
+    std::io::stdout().flush().unwrap_or_default();
+
     let to_compile_error =
         |parse_error| CompileError::from_parse_error(parse_error, source_path.clone());
 
@@ -144,5 +148,8 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
     }
 
     compiler.run_pm();
-    Ok(compiler.emit())
+    println!("[Done]");
+    {
+        Ok(compiler.emit())
+    }
 }

@@ -4,7 +4,8 @@ use std::process::Command;
 
 /// Generate hex file from llvm assembly and return the file path
 pub fn objcopy(assembly: &str) -> String {
-    print!("Generating hex file...");
+    let hex_name = format!("{}.hex", assembly);
+    print!("Generating {}...", &hex_name);
     std::io::stdout().flush().unwrap_or_default();
 
     // Load the environmental variable: `ARDUINO_DIR`
@@ -42,6 +43,6 @@ pub fn objcopy(assembly: &str) -> String {
     }
     println!("[Done]");
     {
-        format!("{}.hex", assembly)
+        hex_name
     }
 }
