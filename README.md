@@ -1,3 +1,8 @@
+<h1 align="center">🐍</h1>
+
+<p align="center">DSPython is a restricted Python subset compiler intended for use in Arduino.</p>
+
+
 # Warning
 This project is in the very initial stage now and may not do what you want properly.
 You can browse the [tests](https://github.com/tdh8316/dsp/tree/master/tests) directory to see upstream working,
@@ -8,12 +13,10 @@ or [example](https://github.com/tdh8316/dsp/tree/master/examples) directory to l
 # DSPython - Damn Small Python
 > Python compiler for small places
 
-DSPython is a restricted Python subset compiler intended for use in Arduino.
-
 The [Micropython](https://github.com/micropython/micropython) project aims to put an implementation of Python 3 on microcontrollers, however, not available on Arduino.
 
-DSPython uses [LLVM](http://llvm.org/) to provide a way to compile programs written in the Python programming language.
-It generates LLVM IR, which is intended to be similar to C++'s. Accordingly, the DSPython is internally not a Python at all.
+DSPython uses [LLVM](http://llvm.org/) to provide a way to compile programs written in the [Python programming language](https://www.python.org/).
+It generates LLVM IR, which is intended to be similar to C++'s. Accordingly, the **DSPython is internally not a Python** at all.
 
 Here is an example program that blinks the built-in LED of Arduino Uno:
 ```python
