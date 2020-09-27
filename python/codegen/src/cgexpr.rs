@@ -199,10 +199,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
         let mut args_value: Vec<BasicValueEnum> = vec![];
 
-        for (i, expr_proto) in args.iter().zip(args_proto.iter()).enumerate() {
-            let expr = expr_proto.0;
-            let proto = expr_proto.1;
-
+        for (i, (expr, proto)) in args.iter().zip(args_proto.iter()).enumerate() {
             // Prevent compile the same argument twice
             let value = if i == 0 {
                 first_arg
@@ -212,6 +209,14 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
             // Convert the type of argument according to the signature
             match value {
+                Value::Bool { value } => {
+                    let cast = self.builder.build_int_truncate(
+                        value,
+                        proto.get_type().into_int_type(),
+                        "itrunc",
+                    );
+                    args_value.push(BasicValueEnum::IntValue(cast))
+                }
                 Value::I8 { value } => {
                     let cast = self.builder.build_int_cast(
                         value,

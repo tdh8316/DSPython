@@ -5,8 +5,7 @@ pub fn mangling(origin: &String, at: ValueType) -> String {
 
     origin.push_str(match at {
         ValueType::Str => "__s__",
-        ValueType::I8 => "__i__",
-        ValueType::I16 => "__i__",
+        ValueType::I8 | ValueType::I16 | ValueType::Bool => "__i__",
         ValueType::F32 => "__f__",
         _ => "",
     });
