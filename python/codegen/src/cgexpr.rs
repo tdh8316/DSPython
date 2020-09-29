@@ -180,7 +180,11 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         };
 
         // Compile the first argument to get type signature
-        let first_arg = self.compile_expr(args.clone().first().unwrap())?;
+        let first_arg = if let Some(f_arg) = args.first() {
+            self.compile_expr(f_arg)?
+        } else {
+            Value::Void
+        };
 
         let func = match self.get_function(&func_name) {
             Some(f) => f,
@@ -196,7 +200,6 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         };
 
         let args_proto = func.get_params();
-
         let mut args_value: Vec<BasicValueEnum> = vec![];
 
         for (i, (expr, proto)) in args.iter().zip(args_proto.iter()).enumerate() {
