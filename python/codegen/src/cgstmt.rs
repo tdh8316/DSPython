@@ -40,6 +40,16 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 self.compile_stmt_function_def(name, args, body, returns)?;
                 Ok(())
             }
+            StatementType::AnnAssign {
+                target,
+                annotation: _, // Do not check type; It will be done in compile time
+                value,
+            } => {
+                if let Some(value) = value {
+                    self.compile_stmt_ann_assign(target, value)?;
+                }
+                Ok(())
+            }
             StatementType::Assign { targets, value } => {
                 if targets.len() > 1 {
                     return err!(
@@ -48,39 +58,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                         "Variable unpacking is not implemented."
                     );
                 }
-                let target = targets.last().unwrap();
-                let name = match &target.node {
-                    ast::ExpressionType::Identifier { name } => name,
-                    _ => {
-                        return err!(
-                            self,
-                            LLVMCompileErrorType::NotImplemented,
-                            "Failed to get assignee."
-                        );
-                    }
-                };
-                let value = self.compile_expr(value)?;
-                let value_type = value.get_type();
-
-                if let Some(fn_value) = &self._fn_value {
-                    let llvm_var = self.locals.load(fn_value, name);
-                    let pointer = if let Some(llvm_var) = llvm_var {
-                        llvm_var.pointer_value()
-                    } else {
-                        self.builder
-                            .build_alloca(value_type.to_basic_type(self.context), name)
-                    };
-                    self.builder.build_store(pointer, value.to_basic_value());
-                    self.locals.set(fn_value, name, (value_type, pointer));
-                } else {
-                    let global =
-                        self.module
-                            .add_global(value_type.to_basic_type(self.context), None, name);
-                    global.set_unnamed_addr(true);
-                    global.set_initializer(&value.to_basic_value());
-                    let pointer = global.as_pointer_value();
-                    self.globals.set(name, (value_type, pointer));
-                }
+                self.compile_stmt_assign(targets.first().unwrap(), value)?;
                 Ok(())
             }
             StatementType::Return { value } => {
@@ -167,6 +145,55 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 format!("{:?}", stmt)
             ),
         }
+    }
+
+    fn compile_stmt_assign(
+        &mut self,
+        target: &ast::Expression,
+        value: &ast::Expression,
+    ) -> Result<(), LLVMCompileError> {
+        let name = match &target.node {
+            ast::ExpressionType::Identifier { name } => name,
+            _ => {
+                return err!(
+                    self,
+                    LLVMCompileErrorType::NotImplemented,
+                    "Failed to get assignee."
+                );
+            }
+        };
+        let value = self.compile_expr(value)?;
+        let value_type = value.get_type();
+
+        if let Some(fn_value) = &self._fn_value {
+            let llvm_var = self.locals.load(fn_value, name);
+            let pointer = if let Some(llvm_var) = llvm_var {
+                llvm_var.pointer_value()
+            } else {
+                self.builder
+                    .build_alloca(value_type.to_basic_type(self.context), name)
+            };
+            self.builder.build_store(pointer, value.to_basic_value());
+            self.locals.set(fn_value, name, (value_type, pointer));
+        } else {
+            let global = self
+                .module
+                .add_global(value_type.to_basic_type(self.context), None, name);
+            global.set_unnamed_addr(true);
+            global.set_initializer(&value.to_basic_value());
+            let pointer = global.as_pointer_value();
+            self.globals.set(name, (value_type, pointer));
+        }
+
+        Ok(())
+    }
+
+    fn compile_stmt_ann_assign(
+        &mut self,
+        target: &ast::Expression,
+        value: &ast::Expression,
+    ) -> Result<(), LLVMCompileError> {
+        self.compile_stmt_assign(target, value)
     }
 
     fn compile_stmt_function_def(
