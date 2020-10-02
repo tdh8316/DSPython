@@ -3,7 +3,7 @@ use inkwell::values::{BasicValueEnum, InstructionOpcode};
 use inkwell::{FloatPredicate, IntPredicate};
 
 use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
-use dsp_compiler_mangler::mangling;
+use dsp_compiler_mangler::get_mangled_name;
 use dsp_compiler_value::convert::{truncate_bigint_to_u64, try_get_constant_string};
 use dsp_compiler_value::value::{Value, ValueHandler, ValueType};
 use dsp_python_parser::ast;
@@ -190,7 +190,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             Some(f) => f,
             None => {
                 // Simple mangling from the type of the first argument
-                let func_name_mangled = mangling(&func_name, first_arg.get_type());
+                let func_name_mangled = get_mangled_name(&func_name, first_arg.get_type());
                 if let Some(f) = self.get_function(&func_name_mangled) {
                     f
                 } else {

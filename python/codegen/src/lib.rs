@@ -7,6 +7,7 @@ use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
 use dsp_python_parser::ast;
 
 use crate::scope::{Locals, VariableMap};
+use dsp_compiler_value::convert::try_get_constant_string;
 
 pub mod scope;
 
@@ -67,11 +68,24 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         }
     }
 
-    fn set_loc(&mut self, location: ast::Location) {
+    pub fn set_loc(&mut self, location: ast::Location) {
         self._current_source_location = location;
     }
 
     pub fn get_loc(&self) -> ast::Location {
         self._current_source_location
     }
+}
+
+pub fn get_doc(body: &[ast::Statement]) -> (&[ast::Statement], Option<String>) {
+    if let Some((val, body_rest)) = body.split_first() {
+        if let ast::StatementType::Expression { ref expression } = val.node {
+            if let ast::ExpressionType::String { value } = &expression.node {
+                if let Some(value) = try_get_constant_string(value) {
+                    return (body_rest, Some(value));
+                }
+            }
+        }
+    }
+    (body, None)
 }

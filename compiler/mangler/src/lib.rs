@@ -1,6 +1,6 @@
 use dsp_compiler_value::value::ValueType;
 
-pub fn mangling(origin: &String, at: ValueType) -> String {
+pub fn get_mangled_name(origin: &String, at: ValueType) -> String {
     let origin = &mut origin.clone();
 
     origin.push_str(match at {

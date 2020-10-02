@@ -10,7 +10,7 @@ use dsp_python_macros::*;
 use dsp_python_parser::ast;
 
 use crate::scope::LLVMVariableAccessor;
-use crate::CodeGen;
+use crate::{get_doc, CodeGen};
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
     pub fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError> {
@@ -317,6 +317,8 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 (v.get_type(), pointer),
             );
         }
+
+        let (body, _doc_string) = get_doc(body);
 
         for statement in body.iter() {
             self.compile_stmt(statement)?;
