@@ -278,6 +278,8 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             None,
         );
 
+        // TODO: Make definition when its first use
+
         // Create an entry block
         let bb = self.context.append_basic_block(f, "");
         self.builder.position_at_end(bb);
