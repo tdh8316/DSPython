@@ -31,7 +31,20 @@ def delay(_milliseconds: int) -> None:
     ...
 
 
+def is_serial_available() -> bool:
+    ...
+
+
 def serial_begin(_baudrate: int) -> None:
+    ...
+
+
+# noinspection PyShadowingBuiltins
+def input() -> int:
+    ...
+
+
+def flush() -> None:
     ...
 
 

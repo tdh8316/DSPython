@@ -12,12 +12,19 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
         None,
     );
     module.add_function(
+        "is_serial_available",
+        context.bool_type().fn_type(&[], false),
+        None,
+    );
+    module.add_function(
         "serial_begin",
         context
             .void_type()
             .fn_type(&[context.i16_type().into()], false),
         None,
     );
+    module.add_function("input", context.i16_type().fn_type(&[], false), None);
+    module.add_function("flush", context.void_type().fn_type(&[], false), None);
     module.add_function(
         "delay",
         context
