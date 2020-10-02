@@ -1,4 +1,4 @@
-#include "LLVMArduinoBuiltins.h"
+#include "LLVMArduinoBuiltins.hh"
 
 extern "C" void pin_mode(uint8_t pin, uint8_t mode) {
     return pinMode(pin, mode);
