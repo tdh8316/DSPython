@@ -1,18 +1,18 @@
-use std::fs::read_to_string;
+use std::fs::{read_dir, read_to_string};
 use std::io::Write;
 
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
+use inkwell::OptimizationLevel;
 use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::support::LLVMString;
 use inkwell::targets::{TargetData, TargetTriple};
-use inkwell::OptimizationLevel;
 
 use dsp_compiler_error::{LLVMCompileError, LLVMCompileErrorType};
-use dsp_python_codegen::{get_doc, CodeGen};
-use dsp_python_parser::parser::parse_program;
+use dsp_python_codegen::{CodeGen, get_doc};
 use dsp_python_parser::{ast, CompileError};
+use dsp_python_parser::parser::parse_program;
 
 pub use crate::flags::*;
 use crate::llvm_prototypes::generate_prototypes;
@@ -47,6 +47,37 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         }
     }
 
+    pub fn prepare_module(&mut self) -> CompileResult<()> {
+        let libs = read_dir("./arduino/").expect("Failed to load DSPython Arduino core libraries").map(
+            |res| res.map(
+                |entry| entry.path()
+            )
+        ).collect::<Result<Vec<_>, std::io::Error>>().unwrap();
+
+        for lib in libs.iter() {
+            let lib = lib.to_str().unwrap();
+            let to_compile_error =
+                |parse_error| CompileError::from_parse_error(parse_error, lib.to_string());
+
+            let source = read_to_string(&lib)
+                .expect(&format!("dspython: can't open file '{}'", lib));
+            let parsed_ast = parse_program(&source).map_err(to_compile_error);
+            if let Err(e) = parsed_ast {
+                panic!("ParseError: {}", e);
+            }
+            let source_ast = parsed_ast.unwrap();
+            if let Err(mut e) = self.compile(source_ast) {
+                // Enrich error
+                e.file = Some(lib.to_string());
+
+                return Err(e);
+            }
+
+        }
+
+        Ok(())
+    }
+
     pub fn compile(&mut self, program: ast::Program) -> CompileResult<()> {
         let (statements, _doc_string) = get_doc(&program.statements);
 
@@ -70,7 +101,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 }
 
 pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMString> {
-    print!("Compiling {}...", &source_path);
+    // print!("Compiling {}...", &source_path);
     std::io::stdout().flush().unwrap_or_default();
 
     let to_compile_error =
@@ -126,6 +157,7 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
     // TODO: Compile only used functions, not all
     generate_prototypes(compiler.cg.module, compiler.cg.context);
     let source_ast = parsed_ast.unwrap();
+    compiler.prepare_module();
     if let Err(mut e) = compiler.compile(source_ast) {
         // Enrich error
         e.file = Some(compiler.source_path);
@@ -134,7 +166,7 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
     }
 
     compiler.run_pm();
-    println!("[Done]");
+    // println!("[Done]");
     {
         Ok(compiler.emit())
     }
