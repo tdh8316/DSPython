@@ -203,6 +203,10 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         body: &ast::Suite,
         returns: &Option<ast::Expression>,
     ) -> Result<(), LLVMCompileError> {
+        // Do not make declaration if this function is not called anywhere
+        if !self.compile_context.function_has_declared.contains(name) {
+            return Ok(());
+        }
         // The types and names of arguments
         let mut args_vec: Vec<BasicTypeEnum> = vec![];
         let mut arg_names: Vec<&String> = vec![];
@@ -277,8 +281,6 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             },
             None,
         );
-
-        // TODO: Make definition when its first use
 
         // Create an entry block
         let bb = self.context.append_basic_block(f, "");

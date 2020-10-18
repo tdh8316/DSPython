@@ -4,10 +4,10 @@ use inkwell::module::Module;
 use inkwell::values::FunctionValue;
 
 use dsp_compiler_error::{err, LLVMCompileError, LLVMCompileErrorType};
+use dsp_compiler_value::convert::try_get_constant_string;
 use dsp_python_parser::ast;
 
 use crate::scope::{Locals, VariableMap};
-use dsp_compiler_value::convert::try_get_constant_string;
 
 pub mod scope;
 
@@ -16,18 +16,28 @@ pub mod cgstmt;
 
 pub struct CompileContext {
     returned: bool,
+    pub function_has_declared: Vec<String>,
+}
+
+impl CompileContext {
+    pub fn new(function_has_declared: Vec<String>) -> Self {
+        CompileContext {
+            returned: false,
+            function_has_declared,
+        }
+    }
 }
 
 pub struct CodeGen<'a, 'ctx> {
     pub context: &'ctx Context,
     pub builder: &'a Builder<'ctx>,
     pub module: &'a Module<'ctx>,
+    pub compile_context: CompileContext,
 
     _fn_value: Option<FunctionValue<'ctx>>,
     _current_source_location: ast::Location,
     globals: VariableMap<'ctx>,
     locals: Locals<'ctx>,
-    compile_context: CompileContext,
 }
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
@@ -44,7 +54,10 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             _current_source_location: ast::Location::default(),
             globals: VariableMap::new(),
             locals: Locals::new(),
-            compile_context: CompileContext { returned: false },
+            compile_context: CompileContext {
+                returned: false,
+                function_has_declared: Vec::new(),
+            },
         }
     }
 
