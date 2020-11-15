@@ -27,6 +27,10 @@ def pin_mode(_pin: int, _mode: int) -> None:
     ...
 
 
+def pulse_in(_pin: int, _state: int) -> float:
+    ...
+
+
 def delay(_milliseconds: int) -> None:
     ...
 

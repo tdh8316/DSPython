@@ -1,5 +1,7 @@
 """
-DSPython test
+This is the DSPython implementation of the Arduino example.
+
+Created for DSPython by Donghyeok Tak <tdh8316@naver.com>
 """
 
 from arduino import *
@@ -9,7 +11,6 @@ echo = 12
 
 
 def setup():
-    """This is a test"""
     serial_begin(9600)
 
     pin_mode(trig, OUTPUT)

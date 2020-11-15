@@ -12,6 +12,13 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
         None,
     );
     module.add_function(
+        "pulse_in",
+        context
+            .f32_type()
+            .fn_type(&[context.i8_type().into(), context.i8_type().into()], false),
+        None,
+    );
+    module.add_function(
         "is_serial_available",
         context.bool_type().fn_type(&[], false),
         None,
