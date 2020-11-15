@@ -60,6 +60,7 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 {C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_analog.c -o {OUT_PREFIX}wiring_analog.c.o
 {C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_digital.c -o {OUT_PREFIX}wiring_digital.c.o
 {C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_pulse.c -o {OUT_PREFIX}wiring_pulse.c.o
+{C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_pulse.S -o {OUT_PREFIX}wiring_pulse.S.o
 {C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_shift.c -o {OUT_PREFIX}wiring_shift.c.o
 {C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}hooks.c -o {OUT_PREFIX}hooks.c.o
 {CPP} {CPP_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}CDC.cpp -o {OUT_PREFIX}CDC.cpp.o
@@ -87,6 +88,7 @@ llc -filetype=obj {INPUT} -o {INPUT}.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring_analog.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring_digital.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring_pulse.c.o
+{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring_pulse.S.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}wiring_shift.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}hooks.c.o
 {AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}CDC.cpp.o
