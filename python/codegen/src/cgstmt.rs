@@ -11,6 +11,7 @@ use dsp_python_parser::ast;
 
 use crate::scope::LLVMVariableAccessor;
 use crate::{get_doc, CodeGen};
+use inkwell::module::Linkage;
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
     pub fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError> {
@@ -166,6 +167,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         let value_type = value.get_type();
 
         if let Some(fn_value) = &self._fn_value {
+            // Define the local
             let llvm_var = self.locals.load(fn_value, name);
             let pointer = if let Some(llvm_var) = llvm_var {
                 llvm_var.pointer_value()
@@ -176,9 +178,11 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             self.builder.build_store(pointer, value.to_basic_value());
             self.locals.set(fn_value, name, (value_type, pointer));
         } else {
+            // Define the global
             let global = self
                 .module
                 .add_global(value_type.to_basic_type(self.context), None, name);
+            global.set_linkage(Linkage::Internal);
             global.set_unnamed_addr(true);
             global.set_initializer(&value.to_basic_value());
             let pointer = global.as_pointer_value();
@@ -203,10 +207,6 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         body: &ast::Suite,
         returns: &Option<ast::Expression>,
     ) -> Result<(), LLVMCompileError> {
-        // Do not make declaration if this function is not called anywhere
-        if !self.compile_context.function_has_declared.contains(name) {
-            return Ok(());
-        }
         // The types and names of arguments
         let mut args_vec: Vec<BasicTypeEnum> = vec![];
         let mut arg_names: Vec<&String> = vec![];
@@ -281,6 +281,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             },
             None,
         );
+        if !vec!["setup", "loop"].contains(&name.as_str()) {
+            f.set_linkage(Linkage::Internal);
+        }
 
         // Create an entry block
         let bb = self.context.append_basic_block(f, "");
