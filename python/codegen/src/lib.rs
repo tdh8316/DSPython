@@ -16,15 +16,11 @@ pub mod cgstmt;
 
 pub struct CompileContext {
     returned: bool,
-    pub function_has_declared: Vec<String>,
 }
 
 impl CompileContext {
-    pub fn new(function_has_declared: Vec<String>) -> Self {
-        CompileContext {
-            returned: false,
-            function_has_declared,
-        }
+    pub fn new() -> Self {
+        CompileContext { returned: false }
     }
 }
 
@@ -54,10 +50,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             _current_source_location: ast::Location::default(),
             globals: VariableMap::new(),
             locals: Locals::new(),
-            compile_context: CompileContext {
-                returned: false,
-                function_has_declared: Vec::new(),
-            },
+            compile_context: CompileContext { returned: false },
         }
     }
 

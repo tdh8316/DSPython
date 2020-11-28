@@ -24,85 +24,17 @@ type CompileResult<T> = Result<T, LLVMCompileError>;
 
 pub struct Compiler<'a, 'ctx> {
     pub source_path: String,
-    pub compiler_flags: CompilerFlags<'a>,
+    pub compiler_flags: CompilerFlags,
 
     cg: CodeGen<'a, 'ctx>,
-    checker: Checker,
     pass_manager: PassManager<Module<'ctx>>,
     program: ast::Program,
-}
-
-pub struct Checker {
-    function_has_declared: Vec<String>,
-}
-
-impl Checker {
-    pub fn new() -> Self {
-        Checker {
-            function_has_declared: Vec::new(),
-        }
-    }
-    pub fn chk_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError> {
-        match &stmt.node {
-            ast::StatementType::Expression { expression } => self.chk_expr(expression)?,
-            ast::StatementType::FunctionDef {
-                is_async: _is_async,
-                name: _name,
-                args: _args,
-                body,
-                ..
-            } => {
-                for s in body.iter() {
-                    self.chk_stmt(s)?;
-                }
-            }
-            ast::StatementType::If { test, body, orelse } => {
-                self.chk_expr(test)?;
-                for s in body.iter() {
-                    self.chk_stmt(s)?;
-                }
-                if let Some(orelse) = orelse {
-                    for s in orelse.iter() {
-                        self.chk_stmt(s)?;
-                    }
-                }
-            }
-            ast::StatementType::While { test, body, orelse } => {
-                self.chk_expr(test)?;
-                for s in body.iter() {
-                    self.chk_stmt(s)?;
-                }
-                if let Some(orelse) = orelse {
-                    for s in orelse.iter() {
-                        self.chk_stmt(s)?;
-                    }
-                }
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    pub fn chk_expr(&mut self, expr: &ast::Expression) -> Result<(), LLVMCompileError> {
-        use dsp_python_parser::ast::ExpressionType;
-        match &expr.node {
-            ExpressionType::Call { function, .. } => {
-                self.function_has_declared.push(match &function.node {
-                    ast::ExpressionType::Identifier { name } => name.to_string(),
-                    _ => panic!("Unrecognized callee name {:?}", expr),
-                });
-            }
-            _ => {}
-        }
-        Ok(())
-    }
 }
 
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
     pub fn new(
         source_path: String,
-        compiler_flags: CompilerFlags<'a>,
+        compiler_flags: CompilerFlags,
         context: &'ctx Context,
         builder: &'a Builder<'ctx>,
         module: &'a Module<'ctx>,
@@ -113,7 +45,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             source_path,
             compiler_flags,
             cg: CodeGen::new(context, builder, module),
-            checker: Checker::new(),
             pass_manager,
             program,
         }
@@ -122,11 +53,18 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     pub fn compile(&mut self) -> CompileResult<()> {
         let (statements, _doc_string) = get_doc(&self.program.statements);
 
-        // Add `setup` and `loop` function now, preventing from compiling the same name
-        self.cg
-            .compile_context
-            .function_has_declared
-            .append(&mut vec!["setup".to_string(), "loop".to_string()]);
+        for statement in statements.iter() {
+            if let ast::StatementType::Expression { ref expression } = statement.node {
+                self.cg.compile_expr(&expression)?;
+            } else {
+                self.cg.compile_stmt(&statement)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn compile_module(&mut self, module: ast::Program) -> CompileResult<()> {
+        let (statements, _doc_string) = get_doc(&module.statements);
 
         for statement in statements.iter() {
             if let ast::StatementType::Expression { ref expression } = statement.node {
@@ -139,7 +77,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     }
 
     pub fn prepare_module(&mut self) -> CompileResult<()> {
-        self.get_need_to_define()?;
         let libs = read_dir("./arduino/")
             .expect("Failed to load DSPython Arduino core libraries")
             .map(|res| res.map(|entry| entry.path()))
@@ -152,17 +89,19 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             if lib.contains("__init__.py") {
                 continue;
             }
+
             let to_compile_error =
                 |parse_error| CompileError::from_parse_error(parse_error, lib.to_string());
 
             let source =
                 read_to_string(&lib).expect(&format!("dspython: can't open file '{}'", lib));
-            let parsed_ast = parse_program(&source).map_err(to_compile_error);
-            if let Err(e) = parsed_ast {
-                panic!("ParseError: {}", e);
-            }
-            let source_ast = parsed_ast.unwrap();
-            if let Err(mut e) = self.compile_module(source_ast) {
+            let module_ast = match parse_program(&source).map_err(to_compile_error) {
+                Err(e) => {
+                    panic!("ParseError: {}", e);
+                }
+                Ok(module) => module,
+            };
+            if let Err(mut e) = self.compile_module(module_ast) {
                 // Enrich error
                 e.file = Some(lib.to_string());
 
@@ -179,33 +118,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
     pub fn emit(&self) -> LLVMString {
         self.cg.module.print_to_string()
-    }
-
-    // TODO: Remove global variables that never used
-    pub fn get_need_to_define(&mut self) -> Result<(), LLVMCompileError> {
-        for statement in self.program.statements.iter() {
-            if let ast::StatementType::Expression { ref expression } = statement.node {
-                self.checker.chk_expr(&expression)?;
-            } else {
-                self.checker.chk_stmt(&statement)?;
-            }
-        }
-        self.cg.compile_context.function_has_declared = self.checker.function_has_declared.clone();
-
-        Ok(())
-    }
-
-    pub fn compile_module(&mut self, program: ast::Program) -> CompileResult<()> {
-        let (statements, _doc_string) = get_doc(&program.statements);
-
-        for statement in statements.iter() {
-            if let ast::StatementType::Expression { ref expression } = statement.node {
-                self.cg.compile_expr(&expression)?;
-            } else {
-                self.cg.compile_stmt(&statement)?;
-            }
-        }
-        Ok(())
     }
 }
 
@@ -238,7 +150,7 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
             return Err(LLVMCompileError::new(
                 None,
                 LLVMCompileErrorType::NotImplemented(
-                    "Optimization level must be a integer of 0~3".to_string(),
+                    "The optimization level must be an integer from 0 to 3.".to_string(),
                 ),
             ));
         }
@@ -247,11 +159,12 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
 
     let source = read_to_string(&source_path)
         .expect(&format!("dspython: can't open file '{}'", source_path));
-    let parsed_ast = parse_program(&source).map_err(to_compile_error);
-    if let Err(e) = parsed_ast {
-        panic!("ParseError: {}", e);
-    }
-    let source_ast = parsed_ast.unwrap();
+    let ast = match parse_program(&source).map_err(to_compile_error) {
+        Err(e) => {
+            panic!("ParseError: {}", e);
+        }
+        Ok(program) => program,
+    };
 
     // Create Compiler instance
     let mut compiler = Compiler::new(
@@ -261,10 +174,9 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
         &builder,
         &module,
         pass_manager,
-        source_ast,
+        ast,
     );
 
-    // Including all default functions is too expensive.
     generate_prototypes(compiler.cg.module, compiler.cg.context);
     compiler.prepare_module()?;
     if let Err(mut e) = compiler.compile() {
