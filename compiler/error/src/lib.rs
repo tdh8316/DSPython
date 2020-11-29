@@ -44,8 +44,8 @@ impl fmt::Display for LLVMCompileError {
             format!(
                 "File '{}', line {}:{}",
                 self.file.as_ref().unwrap_or(&"<Unknown>".to_string()),
-                loc.column(),
-                loc.row()
+                loc.row(),
+                loc.column()
             )
         } else {
             format!(
@@ -60,7 +60,7 @@ impl fmt::Display for LLVMCompileError {
 
         write!(
             f,
-            "LLVMCompileError: at {}: {}: {}",
+            "LLVMCompileError: at {} -> {}: {}",
             loc_string,
             &self.error.to_string(),
             error_desc

@@ -11,10 +11,7 @@ use dsp_python_parser::ast;
 use crate::CodeGen;
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
-    pub fn compile_expr(
-        &mut self,
-        expr: &ast::Expression,
-    ) -> Result<Value<'ctx>, LLVMCompileError> {
+    pub fn emit_expr(&mut self, expr: &ast::Expression) -> Result<Value<'ctx>, LLVMCompileError> {
         self.set_loc(expr.location);
 
         use dsp_python_parser::ast::ExpressionType;
@@ -181,7 +178,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
         // Compile the first argument to get type signature
         let first_arg = if let Some(f_arg) = args.first() {
-            self.compile_expr(f_arg)?
+            self.emit_expr(f_arg)?
         } else {
             Value::Void
         };
@@ -207,7 +204,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             let value = if i == 0 {
                 first_arg
             } else {
-                self.compile_expr(expr)?
+                self.emit_expr(expr)?
             };
 
             // Convert the type of argument according to the signature
@@ -288,8 +285,8 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             );
         }
 
-        let a = self.compile_expr(vals.first().unwrap())?;
-        let b = self.compile_expr(vals.last().unwrap())?;
+        let a = self.emit_expr(vals.first().unwrap())?;
+        let b = self.emit_expr(vals.last().unwrap())?;
 
         Ok(a.invoke_handler(
             ValueHandler::new()
@@ -351,8 +348,8 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         b: &ast::Expression,
     ) -> Result<Value<'ctx>, LLVMCompileError> {
         use dsp_python_parser::ast::Operator;
-        let a = self.compile_expr(a)?;
-        let b = self.compile_expr(b)?;
+        let a = self.emit_expr(a)?;
+        let b = self.emit_expr(b)?;
         Ok(a.invoke_handler(
             ValueHandler::new()
                 .handle_int(&|_, lhs_value| {

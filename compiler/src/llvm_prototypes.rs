@@ -2,6 +2,7 @@ use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::AddressSpace;
 
+// TODO: Generate prototypes using included files
 pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Context) {
     // Arduino builtins
     module.add_function(

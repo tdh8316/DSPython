@@ -14,12 +14,12 @@ use crate::{get_doc, CodeGen};
 use inkwell::module::Linkage;
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
-    pub fn compile_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError> {
+    pub fn emit_stmt(&mut self, stmt: &ast::Statement) -> Result<(), LLVMCompileError> {
         self.set_loc(stmt.location);
         use dsp_python_parser::ast::StatementType;
         match &stmt.node {
             StatementType::Expression { expression } => {
-                self.compile_expr(expression)?;
+                self.emit_expr(expression)?;
                 Ok(())
             }
             StatementType::FunctionDef {
@@ -37,7 +37,13 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                         "Async functions are not supported."
                     );
                 }
-                let _decorators = decorator_list;
+                if decorator_list.len() > 0 {
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::NotImplemented,
+                        "Decorators are not implemented."
+                    );
+                };
                 self.compile_stmt_function_def(name, args, body, returns)?;
                 Ok(())
             }
@@ -72,7 +78,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     );
                 }
                 if let Some(value) = value {
-                    let return_value = self.compile_expr(value)?;
+                    let return_value = self.emit_expr(value)?;
 
                     if return_value.get_type() == ValueType::Void {
                         self.builder.build_return(None);
@@ -163,7 +169,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 );
             }
         };
-        let value = self.compile_expr(value)?;
+        let value = self.emit_expr(value)?;
         let value_type = value.get_type();
 
         if let Some(fn_value) = &self._fn_value {
@@ -328,7 +334,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         let (body, _doc_string) = get_doc(body);
 
         for statement in body.iter() {
-            self.compile_stmt(statement)?;
+            self.emit_stmt(statement)?;
         }
 
         if !self.compile_context.returned {
@@ -372,7 +378,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         let end_bb = self.context.append_basic_block(parent, "if.end");
 
         // Compile the condition as i1.
-        let test = self.compile_expr(test)?;
+        let test = self.emit_expr(test)?;
         let cond = test.invoke_handler(cvhandler!(self));
 
         // Build the conditional branch.
@@ -387,7 +393,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             if self.compile_context.returned {
                 break;
             }
-            self.compile_stmt(statement)?;
+            self.emit_stmt(statement)?;
         }
         // Then, unconditionally jump to the end block.
         if !self.compile_context.returned {
@@ -402,7 +408,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 if self.compile_context.returned {
                     break;
                 }
-                self.compile_stmt(statement)?;
+                self.emit_stmt(statement)?;
             }
         }
 
@@ -435,7 +441,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         self.builder.position_at_end(while_bb);
 
         // Declare the variable in condition.
-        let start = self.compile_expr(test)?;
+        let start = self.emit_expr(test)?;
         let cond = start.invoke_handler(cvhandler!(self));
 
         // At first, Check whether or not the condition in the header of the loop is true.
@@ -445,7 +451,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         // Emit the loop body.
         self.builder.position_at_end(loop_bb);
         for statement in body.iter() {
-            self.compile_stmt(statement)?;
+            self.emit_stmt(statement)?;
         }
 
         // Emit the conditional branch at the end of the loop body.
@@ -459,7 +465,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         self.builder.position_at_end(else_bb);
         if let Some(statements) = orelse {
             for statement in statements.iter() {
-                self.compile_stmt(statement)?;
+                self.emit_stmt(statement)?;
             }
         }
 

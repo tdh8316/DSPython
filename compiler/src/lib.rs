@@ -26,7 +26,7 @@ pub struct Compiler<'a, 'ctx> {
     pub source_path: String,
     pub compiler_flags: CompilerFlags,
 
-    cg: CodeGen<'a, 'ctx>,
+    codegen: CodeGen<'a, 'ctx>,
     pass_manager: PassManager<Module<'ctx>>,
     program: ast::Program,
 }
@@ -44,7 +44,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         Compiler {
             source_path,
             compiler_flags,
-            cg: CodeGen::new(context, builder, module),
+            codegen: CodeGen::new(context, builder, module),
             pass_manager,
             program,
         }
@@ -55,9 +55,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
         for statement in statements.iter() {
             if let ast::StatementType::Expression { ref expression } = statement.node {
-                self.cg.compile_expr(&expression)?;
+                self.codegen.emit_expr(&expression)?;
             } else {
-                self.cg.compile_stmt(&statement)?;
+                self.codegen.emit_stmt(&statement)?;
             }
         }
         Ok(())
@@ -68,9 +68,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
         for statement in statements.iter() {
             if let ast::StatementType::Expression { ref expression } = statement.node {
-                self.cg.compile_expr(&expression)?;
+                self.codegen.emit_expr(&expression)?;
             } else {
-                self.cg.compile_stmt(&statement)?;
+                self.codegen.emit_stmt(&statement)?;
             }
         }
         Ok(())
@@ -97,6 +97,14 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 read_to_string(&lib).expect(&format!("dspython: can't open file '{}'", lib));
             let module_ast = match parse_program(&source).map_err(to_compile_error) {
                 Err(e) => {
+                    eprintln!("fatal: Could not include standard libraries");
+                    eprintln!(
+                        "An unhandled exception occurred during parsing '{}'",
+                        std::path::PathBuf::from(&e.source_path)
+                            .canonicalize()
+                            .unwrap()
+                            .display()
+                    );
                     panic!("ParseError: {}", e);
                 }
                 Ok(module) => module,
@@ -113,11 +121,11 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     }
 
     pub fn run_pm(&self) {
-        self.pass_manager.run_on(&self.cg.module);
+        self.pass_manager.run_on(&self.codegen.module);
     }
 
     pub fn emit(&self) -> LLVMString {
-        self.cg.module.print_to_string()
+        self.codegen.module.print_to_string()
     }
 }
 
@@ -161,6 +169,13 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
         .expect(&format!("dspython: can't open file '{}'", source_path));
     let ast = match parse_program(&source).map_err(to_compile_error) {
         Err(e) => {
+            eprintln!(
+                "An unhandled exception occurred during parsing '{}'",
+                std::path::PathBuf::from(&e.source_path)
+                    .canonicalize()
+                    .unwrap()
+                    .display()
+            );
             panic!("ParseError: {}", e);
         }
         Ok(program) => program,
@@ -177,7 +192,7 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
         ast,
     );
 
-    generate_prototypes(compiler.cg.module, compiler.cg.context);
+    generate_prototypes(compiler.codegen.module, compiler.codegen.context);
     compiler.prepare_module()?;
     if let Err(mut e) = compiler.compile() {
         // Enrich error
