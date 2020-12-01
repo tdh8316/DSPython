@@ -5,7 +5,7 @@ use clap::{App, Arg, ArgMatches};
 
 use dsp_builder::objcopy;
 use dsp_compiler::{get_assembly, CompilerFlags};
-use dspython::upload_to;
+use dspython::avrdude;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
@@ -24,6 +24,11 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
         .long("--opt-level")
         .short("o")
         .takes_value(true);
+    let arg_baudrate = Arg::with_name("baudrate")
+        .help("Serial communication speed")
+        .long("--baudrate")
+        .short("b")
+        .takes_value(true);
     let arg_remove_hex = Arg::with_name("remove_hex")
         .help("Remove generated hex file")
         .long("--remove-hex")
@@ -35,6 +40,7 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
 
     app.arg(arg_file)
         .arg(arg_opt)
+        .arg(arg_baudrate)
         .arg(arg_port)
         .arg(arg_remove_hex)
         .arg(arg_emit_llvm)
@@ -53,6 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let port = matches.value_of("port");
 
     let optimization_level = matches.value_of("opt_level").unwrap_or("2").parse::<u8>()?;
+    let baudrate = matches.value_of("baudrate").unwrap_or("9600").parse::<u64>()?;
 
     let compiler_flags = CompilerFlags::new(optimization_level);
 
@@ -61,12 +68,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         Err(e) => panic!("{}", e),
     };
 
-    let ll = format!("{}.ll", file);
+    let ir_path = format!("{}.ll", file);
     {
-        write(&ll, assembly.to_string())?;
+        write(&ir_path, assembly.to_string())?;
     }
 
-    let hex = objcopy(&ll);
+    let hex = objcopy(&ir_path);
     {
         let hex_file = File::open(&hex)?;
         let file_size = hex_file.metadata().unwrap().len();
@@ -80,7 +87,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         */
 
         if file_size > 30 * 1024 {
-            println!(
+            eprintln!(
                 "WARNING: The size of the result file ({}KB) is larger than 30KB.",
                 file_size / 1024
             );
@@ -88,18 +95,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     if let Some(port) = port {
-        upload_to(&hex, port);
+        avrdude(&hex, port, baudrate);
     }
 
-    // Remove the hex file after finishing upload
+    // Remove the hex file if --remove-hex is presented after finishing upload
     if matches.is_present("remove_hex") {
         remove_file(hex).unwrap();
     }
 
-    // Remove the llvm ir
+    // Remove the llvm ir if --emit-llvm is not presented
     if !matches.is_present("emit_llvm") {
-        remove_file(ll).unwrap();
+        remove_file(&ir_path).unwrap();
     }
+    
+    // Remove object files
+    remove_file(ir_path.clone() + ".eep").unwrap();
+    remove_file(ir_path.clone() + ".elf").unwrap();
+    remove_file(ir_path.clone() + ".o").unwrap();
 
     Ok(())
 }

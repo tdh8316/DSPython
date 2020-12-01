@@ -1,12 +1,17 @@
 use std::env;
 use std::io::Write;
 use std::process::Command;
+use crate::assembler::static_compiler;
+
+pub mod assembler;
 
 /// Generate hex file from llvm assembly and return the file path
-pub fn objcopy(assembly: &str) -> String {
-    let hex_name = format!("{}.hex", assembly);
+pub fn objcopy(ir_path: &str) -> String {
+    let hex_name = format!("{}.hex", ir_path);
     print!("Generating {}...", &hex_name);
     std::io::stdout().flush().unwrap_or_default();
+
+    static_compiler(ir_path);
 
     // Load the environmental variable: `ARDUINO_DIR`
     let _arduino_dir = env::var("ARDUINO_DIR").expect(
@@ -15,26 +20,25 @@ pub fn objcopy(assembly: &str) -> String {
     let arduino_dir = _arduino_dir.as_str();
 
     // DSPython executable path
-    let exe = env::current_exe().unwrap();
-    let dir = exe.parent().expect("Executable must be in some directory");
+    // let exe = env::current_exe().unwrap();
+    // let dir = exe.parent().expect("Executable must be in some directory");
 
     // Linker path
     let linker = if cfg!(debug_assertions) {
-        format!("python builder/linker.py")
+        "python builder/linker.py"
     } else {
-        format!("{}/bin/builder", dir.display())
+        "bin/builder"
     };
-    let linker = linker.as_str();
 
     // Execute the linker command
     let out = if cfg!(target_os = "windows") {
         Command::new("cmd")
-            .args(&["/C", linker, arduino_dir, assembly])
+            .args(&["/C", linker, arduino_dir, ir_path])
             .status()
             .expect("Failed to execute command")
     } else {
         Command::new("sh")
-            .args(&["-c", linker, arduino_dir, assembly])
+            .args(&["-c", linker, arduino_dir, ir_path])
             .status()
             .expect("Failed to execute command")
     };

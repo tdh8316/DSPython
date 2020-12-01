@@ -3,7 +3,7 @@ use std::io::Write;
 use std::process::Command;
 
 /// Upload hex file to serial port
-pub fn upload_to(hex: &str, port: &str) {
+pub fn avrdude(hex: &str, port: &str, baudrate: u64) {
     print!("Uploading {} >> {}...", hex, port);
     std::io::stdout().flush().unwrap_or_default();
 
@@ -25,15 +25,17 @@ pub fn upload_to(hex: &str, port: &str) {
     };
     let uploader = uploader.as_str();
 
+    let args = ["/C", uploader, arduino_dir, hex, port, &baudrate.to_string()];
+
     // Execute the uploader command
     let out = if cfg!(target_os = "windows") {
         Command::new("cmd")
-            .args(&["/C", uploader, arduino_dir, hex, port])
+            .args(&args)
             .output()
             .expect("Failed to execute command")
     } else {
         Command::new("sh")
-            .args(&["-c", uploader, arduino_dir, hex, port])
+            .args(&args)
             .output()
             .expect("Failed to execute command")
     };

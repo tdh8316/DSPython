@@ -53,8 +53,8 @@ OUT_PREFIX = "arduino_build/"
 if not os.path.isdir(OUT_PREFIX):
     os.makedirs(OUT_PREFIX)
 
+# TODO: Use iterator
 compile_commands = """
-llc -filetype=obj {INPUT} -o {INPUT}.o
 {C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}WInterrupts.c -o {OUT_PREFIX}WInterrupts.c.o
 {C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring.c -o {OUT_PREFIX}wiring.c.o
 {C} {C_FLAGS} {INCLUDE_FILES} {LIBRARY_DIR}wiring_analog.c -o {OUT_PREFIX}wiring_analog.c.o
@@ -135,7 +135,3 @@ for command in compile_commands.splitlines():
     if code != 0:
         print("FATAL: Failed to execute command '{}'".format(command))
         sys.exit(1)
-
-os.remove("{INPUT}.elf".format(INPUT=sys.argv[2]))
-os.remove("{INPUT}.eep".format(INPUT=sys.argv[2]))
-os.remove("{INPUT}.o".format(INPUT=sys.argv[2]))

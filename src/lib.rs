@@ -1,3 +1,3 @@
 mod uploader;
 
-pub use uploader::upload_to;
+pub use uploader::avrdude;

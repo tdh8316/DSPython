@@ -9,6 +9,7 @@ import sys
 ARDUINO_DIR = sys.argv[1]
 INPUT = sys.argv[2]
 PORT = sys.argv[3]
+BRATE = sys.argv[4]
 
 is_windows = os.name == "nt"
 
@@ -23,7 +24,7 @@ if not os.path.isfile(AVRDUDE + (".exe" if is_windows else "")):
 command = (
     "{AVRDUDE} "
     "-C{0}/hardware/tools/avr/etc/avrdude.conf "
-    "-v -patmega328p -carduino -P{PORT} -b115200 -D "
-    "-Uflash:w:{HEX}:i".format(ARDUINO_DIR, AVRDUDE=AVRDUDE, PORT=PORT, HEX=INPUT)
+    "-v -patmega328p -carduino -P{PORT} -b{BRATE} -D "
+    "-Uflash:w:{HEX}:i".format(ARDUINO_DIR, AVRDUDE=AVRDUDE, PORT=PORT, HEX=INPUT, BRATE=BRATE)
 )
 os.system(command)

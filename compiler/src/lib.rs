@@ -124,6 +124,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         self.pass_manager.run_on(&self.codegen.module);
     }
 
+    #[inline]
     pub fn emit(&self) -> LLVMString {
         self.codegen.module.print_to_string()
     }
@@ -163,6 +164,8 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
             ));
         }
     });
+
+    pm_builder.set_size_level(2);
     pm_builder.populate_module_pass_manager(&pass_manager);
 
     let source = read_to_string(&source_path)
