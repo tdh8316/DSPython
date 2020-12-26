@@ -2,12 +2,13 @@
 
 use inkwell::context::Context;
 use inkwell::types::{AnyTypeEnum, BasicTypeEnum, FloatType, IntType, PointerType, VoidType};
-use inkwell::values::{AnyValueEnum, BasicValueEnum, FloatValue, IntValue, PointerValue};
+use inkwell::values::{AnyValueEnum, BasicValueEnum, FloatValue, IntValue, PointerValue, ArrayValue};
 use inkwell::AddressSpace;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Value<'ctx> {
     Void,
+    Array { value: ArrayValue<'ctx>},
     Bool { value: IntValue<'ctx> },
     I8 { value: IntValue<'ctx> },
     I16 { value: IntValue<'ctx> },
@@ -28,6 +29,7 @@ pub enum Value<'ctx> {
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum ValueType {
     Void,
+    Array,
     Bool,
     I8,
     I16,
@@ -48,6 +50,7 @@ pub enum ValueType {
 #[derive(Debug, PartialEq)]
 pub enum ValueTypeGroup {
     Void,
+    Array,
     Bool,
     Int,
     UInt,
@@ -57,6 +60,7 @@ pub enum ValueTypeGroup {
 
 pub struct ValueHandler<'cb, 'ctx: 'cb, T> {
     void_handler: &'cb dyn Fn(&Value<'ctx>) -> T,
+    array_handler: &'cb dyn Fn(&Value<'ctx>, ArrayValue<'ctx>) -> T,
     bool_handler: &'cb dyn Fn(&Value<'ctx>, IntValue<'ctx>) -> T,
     int_handler: &'cb dyn Fn(&Value<'ctx>, IntValue<'ctx>) -> T,
     unsigned_int_handler: &'cb dyn Fn(&Value<'ctx>, IntValue<'ctx>) -> T,
@@ -66,6 +70,7 @@ pub struct ValueHandler<'cb, 'ctx: 'cb, T> {
 
 pub struct ValueTypeHandler<'cb, 'ctx: 'cb, T> {
     void_handler: &'cb dyn Fn(&ValueType, VoidType<'ctx>) -> T,
+    array_handler: &'cb dyn Fn(&ValueType, ArrayValue<'ctx>) -> T,
     bool_handler: &'cb dyn Fn(&ValueType, IntType<'ctx>) -> T,
     int_handler: &'cb dyn Fn(&ValueType, IntType<'ctx>) -> T,
     unsigned_int_handler: &'cb dyn Fn(&ValueType, IntType<'ctx>) -> T,
@@ -77,6 +82,7 @@ impl<'cb, 'ctx: 'cb, T> ValueHandler<'cb, 'ctx, T> {
     pub fn new() -> ValueHandler<'cb, 'ctx, T> {
         ValueHandler {
             void_handler: &|_| panic!("wrong type; void type is not allowed."),
+            array_handler: &|_| panic!("wrong type; array type is not allowed."),
             bool_handler: &|_, _| panic!("wrong type; bool type is not allowed."),
             int_handler: &|_, _| panic!("wrong type; int type is not allowed."),
             unsigned_int_handler: &|_, _| panic!("wrong type; unsigned int type is not allowed."),
@@ -135,6 +141,7 @@ impl<'cb, 'ctx: 'cb, T> ValueTypeHandler<'cb, 'ctx, T> {
     pub fn new() -> ValueTypeHandler<'cb, 'ctx, T> {
         ValueTypeHandler {
             void_handler: &|_, _| panic!("wrong type; void type is not allowed."),
+            array_handler: &|_, _| panic!("wrong type; array type is not allowed."),
             bool_handler: &|_, _| panic!("wrong type; bool type is not allowed."),
             int_handler: &|_, _| panic!("wrong type; int type is not allowed."),
             unsigned_int_handler: &|_, _| panic!("wrong type; unsigned int type is not allowed."),
@@ -196,6 +203,7 @@ impl<'ctx> Value<'ctx> {
     pub fn get_type(&self) -> ValueType {
         match self {
             Value::Void => ValueType::Void,
+            Value::Array {value: _} => ValueType::Array,
             Value::Bool { value: _ } => ValueType::Bool,
             Value::I8 { value: _ } => ValueType::I8,
             Value::I16 { value: _ } => ValueType::I16,
@@ -332,6 +340,7 @@ impl<'ctx> Value<'ctx> {
     pub fn to_any_value(&self) -> AnyValueEnum<'ctx> {
         match self {
             Value::Void => panic!("void is not acceptible"),
+            Value::Array { value } => AnyValueEnum::ArrayValue(*value),
             Value::Bool { value } => AnyValueEnum::IntValue(*value),
             Value::I8 { value } => AnyValueEnum::IntValue(*value),
             Value::I16 { value } => AnyValueEnum::IntValue(*value),
@@ -353,6 +362,7 @@ impl<'ctx> Value<'ctx> {
     pub fn to_basic_value(&self) -> BasicValueEnum<'ctx> {
         match self {
             Value::Void => panic!("void is not acceptible"),
+            Value::Array { value } => BasicValueEnum::ArrayValue(*value),
             Value::Bool { value } => BasicValueEnum::IntValue(*value),
             Value::I8 { value } => BasicValueEnum::IntValue(*value),
             Value::I16 { value } => BasicValueEnum::IntValue(*value),
@@ -374,6 +384,7 @@ impl<'ctx> Value<'ctx> {
     pub fn invoke_handler<'cb, T>(&self, value_handler: &mut ValueHandler<'cb, 'ctx, T>) -> T {
         match self {
             Value::Void => (*value_handler.void_handler)(self),
+            Value::Array { value } => (*value_handler.arr)(self, *value),
             Value::Bool { value } => (*value_handler.bool_handler)(self, *value),
             Value::I8 { value } => (*value_handler.int_handler)(self, *value),
             Value::I16 { value } => (*value_handler.int_handler)(self, *value),
@@ -404,6 +415,7 @@ impl ValueType {
     pub fn to_any_type<'ctx>(&self, context: &'ctx Context) -> AnyTypeEnum<'ctx> {
         match self {
             ValueType::Void => AnyTypeEnum::VoidType(context.void_type()),
+            ValueType::Array => unimplemented!(),
             ValueType::Bool => AnyTypeEnum::IntType(context.bool_type()),
             ValueType::I8 => AnyTypeEnum::IntType(context.i8_type()),
             ValueType::I16 => AnyTypeEnum::IntType(context.i16_type()),
@@ -427,6 +439,7 @@ impl ValueType {
     pub fn to_basic_type<'ctx>(&self, context: &'ctx Context) -> BasicTypeEnum<'ctx> {
         match self {
             ValueType::Void => panic!("void is not acceptible"),
+            ValueType::Array => unimplemented!(),
             ValueType::Bool => BasicTypeEnum::IntType(context.bool_type()),
             ValueType::I8 => BasicTypeEnum::IntType(context.i8_type()),
             ValueType::I16 => BasicTypeEnum::IntType(context.i16_type()),
@@ -450,6 +463,7 @@ impl ValueType {
     pub fn get_group(&self) -> ValueTypeGroup {
         match self {
             ValueType::Void => ValueTypeGroup::Void,
+            ValueType::Array => ValueTypeGroup::Array,
             ValueType::Bool => ValueTypeGroup::Bool,
             ValueType::I8 => ValueTypeGroup::Int,
             ValueType::I16 => ValueTypeGroup::Int,
@@ -471,6 +485,7 @@ impl ValueType {
     pub fn get_bitwidth(&self) -> usize {
         match self {
             ValueType::Void => 0,
+            ValueType::Array => 0, // Unknown
             ValueType::Bool => 1,
             ValueType::I8 => 8,
             ValueType::I16 => 16,
@@ -496,6 +511,7 @@ impl ValueType {
     ) -> T {
         match self {
             ValueType::Void => (*value_type_handler.void_handler)(self, context.void_type()),
+            ValueType::Array => unimplemented!(),
             ValueType::Bool => (*value_type_handler.bool_handler)(self, context.bool_type()),
             ValueType::I8 => (*value_type_handler.int_handler)(self, context.i8_type()),
             ValueType::I16 => (*value_type_handler.int_handler)(self, context.i16_type()),
