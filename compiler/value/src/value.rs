@@ -82,7 +82,7 @@ impl<'cb, 'ctx: 'cb, T> ValueHandler<'cb, 'ctx, T> {
     pub fn new() -> ValueHandler<'cb, 'ctx, T> {
         ValueHandler {
             void_handler: &|_| panic!("wrong type; void type is not allowed."),
-            array_handler: &|_| panic!("wrong type; array type is not allowed."),
+            array_handler: &|_, _| panic!("wrong type; array type is not allowed."),
             bool_handler: &|_, _| panic!("wrong type; bool type is not allowed."),
             int_handler: &|_, _| panic!("wrong type; int type is not allowed."),
             unsigned_int_handler: &|_, _| panic!("wrong type; unsigned int type is not allowed."),
@@ -384,7 +384,7 @@ impl<'ctx> Value<'ctx> {
     pub fn invoke_handler<'cb, T>(&self, value_handler: &mut ValueHandler<'cb, 'ctx, T>) -> T {
         match self {
             Value::Void => (*value_handler.void_handler)(self),
-            Value::Array { value } => (*value_handler.arr)(self, *value),
+            Value::Array { value } => (*value_handler.array_handler)(self, *value),
             Value::Bool { value } => (*value_handler.bool_handler)(self, *value),
             Value::I8 { value } => (*value_handler.int_handler)(self, *value),
             Value::I16 { value } => (*value_handler.int_handler)(self, *value),
