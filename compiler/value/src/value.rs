@@ -2,13 +2,15 @@
 
 use inkwell::context::Context;
 use inkwell::types::{AnyTypeEnum, BasicTypeEnum, FloatType, IntType, PointerType, VoidType};
-use inkwell::values::{AnyValueEnum, BasicValueEnum, FloatValue, IntValue, PointerValue, ArrayValue};
+use inkwell::values::{
+    AnyValueEnum, ArrayValue, BasicValueEnum, FloatValue, IntValue, PointerValue,
+};
 use inkwell::AddressSpace;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Value<'ctx> {
     Void,
-    Array { value: ArrayValue<'ctx>},
+    Array { value: ArrayValue<'ctx> },
     Bool { value: IntValue<'ctx> },
     I8 { value: IntValue<'ctx> },
     I16 { value: IntValue<'ctx> },
@@ -203,7 +205,7 @@ impl<'ctx> Value<'ctx> {
     pub fn get_type(&self) -> ValueType {
         match self {
             Value::Void => ValueType::Void,
-            Value::Array {value: _} => ValueType::Array,
+            Value::Array { value: _ } => ValueType::Array,
             Value::Bool { value: _ } => ValueType::Bool,
             Value::I8 { value: _ } => ValueType::I8,
             Value::I16 { value: _ } => ValueType::I16,
