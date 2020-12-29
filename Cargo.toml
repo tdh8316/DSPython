@@ -1,5 +1,5 @@
 [workspace]
-members = ["builder", "compiler", "python"]
+members = ["compiler", "python"]
 
 [package]
 name = "dspython"
@@ -12,7 +12,6 @@ repository = "https://github.com/tdh8316/dspython"
 
 [dependencies]
 clap = { git = "https://github.com/clap-rs/clap", tag = "v2.33.0" }
-dsp_builder = { path = "./builder" }
 dsp_compiler = { path = "./compiler" }
 dsp_python_codegen = { path = "./python/codegen" }
 dsp_python_parser = { path = "./python/parser" }

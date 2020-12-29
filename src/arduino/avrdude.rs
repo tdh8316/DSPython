@@ -4,15 +4,15 @@ use crate::utils::get_arduino_dir;
 
 #[derive(Clone)]
 pub struct AVRDudeFlags {
-    pub processor: String,
+    pub mcu: String,
     pub port: String,
     pub baudrate: u64,
 }
 
 impl AVRDudeFlags {
-    pub fn new(processor: String, port: &str, baudrate: u64) -> Self {
+    pub fn new(mcu: String, port: &str, baudrate: u64) -> Self {
         AVRDudeFlags {
-            processor,
+            mcu,
             port: port.to_string(),
             baudrate,
         }
@@ -28,7 +28,7 @@ pub fn avrdude(target_path: &str, flags: AVRDudeFlags) {
     let avrdude_executable = format!("{}/{}", arduino_dir, "hardware/tools/avr/bin/avrdude");
 
     let config_file = format!("{}/{}", arduino_dir, "/hardware/tools/avr/etc/avrdude.conf");
-    let processor = format!("-p{}", flags.processor);
+    let mcu = format!("-p{}", flags.mcu);
     let port = format!("-P{}", flags.port);
     let b = format!("-b{}", flags.baudrate);
     let memtype = format!("-Uflash:w:{}:i", target_path);
@@ -40,8 +40,8 @@ pub fn avrdude(target_path: &str, flags: AVRDudeFlags) {
         &config_file,
         // verbose output
         "-v",
-        // AVR device
-        &processor,
+        // micro controller unit
+        &mcu,
         // programmer type
         "-carduino",
         // serial port
@@ -55,8 +55,8 @@ pub fn avrdude(target_path: &str, flags: AVRDudeFlags) {
     ];
 
     let mut process = if cfg!(target_os = "windows") {
+        println!("{}", args.join(" "));
         args.insert(0, "/C");
-        println!("{:?}", args.join(" "));
         Command::new("cmd")
             .args(args.as_slice())
             .stdout(Stdio::inherit())
@@ -64,8 +64,8 @@ pub fn avrdude(target_path: &str, flags: AVRDudeFlags) {
             .spawn()
             .expect("Failed to execute avrdude!")
     } else {
+        println!("{}", args.join(" "));
         args.insert(0, "-c");
-        println!("{:?}", args.join(" "));
         Command::new("sh")
             .args(args.as_slice())
             .stdout(Stdio::inherit())
@@ -75,6 +75,6 @@ pub fn avrdude(target_path: &str, flags: AVRDudeFlags) {
     };
     let status = process.wait().unwrap();
     if !status.success() {
-        eprintln!("ERROR: avrdude failed");
+        panic!("ERROR: avrdude failed");
     }
 }

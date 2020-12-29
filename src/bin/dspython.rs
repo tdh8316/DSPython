@@ -3,9 +3,8 @@ use std::fs::{remove_file, write, File};
 
 use clap::{App, Arg, ArgMatches};
 
-use dsp_builder::objcopy;
 use dsp_compiler::{get_assembly, CompilerFlags};
-use dspython::avrdude;
+use dspython::{avrdude, avrgcc, static_compiler, AVRCompilerFlags, AVRDudeFlags};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
@@ -19,16 +18,23 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
         .long("--upload-to")
         .short("u")
         .takes_value(true);
+    let arg_processor = Arg::with_name("processor")
+        .long("--processor")
+        .short("p")
+        .takes_value(true)
+        .default_value("atmega328p");
     let arg_opt = Arg::with_name("opt_level")
         .help("LLVM Optimization level. Must be in the range of 0 to 3")
         .long("--opt-level")
         .short("o")
-        .takes_value(true);
+        .takes_value(true)
+        .default_value("2");
     let arg_baudrate = Arg::with_name("baudrate")
         .help("Serial communication speed")
         .long("--baudrate")
         .short("b")
-        .takes_value(true);
+        .takes_value(true)
+        .default_value("9600");
     let arg_remove_hex = Arg::with_name("remove_hex")
         .help("Remove generated hex file")
         .long("--remove-hex")
@@ -42,6 +48,7 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
         .arg(arg_opt)
         .arg(arg_baudrate)
         .arg(arg_port)
+        .arg(arg_processor)
         .arg(arg_remove_hex)
         .arg(arg_emit_llvm)
         .get_matches()
@@ -57,9 +64,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let file = matches.value_of("file").expect("no input files");
     let port = matches.value_of("port");
+    let processor = matches.value_of("processor").unwrap();
 
-    let optimization_level = matches.value_of("opt_level").unwrap_or("2").parse::<u8>()?;
-    let baudrate = matches.value_of("baudrate").unwrap_or("9600").parse::<u64>()?;
+    let optimization_level = matches.value_of("opt_level").unwrap().parse::<u8>()?;
 
     let compiler_flags = CompilerFlags::new(optimization_level);
 
@@ -69,33 +76,28 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let ir_path = format!("{}.ll", file);
-    {
-        write(&ir_path, assembly.to_string())?;
-    }
+    write(&ir_path, assembly.to_string())?;
 
-    let hex = objcopy(&ir_path);
-    {
-        let hex_file = File::open(&hex)?;
-        let file_size = hex_file.metadata().unwrap().len();
+    let object = static_compiler(&ir_path, processor, optimization_level);
 
-        /*
-        println!(
-            "The result is written to {} ({}KB of 30KB)",
-            &hex,
+    let avr_compiler_flags = AVRCompilerFlags::new(16000000, processor.to_owned());
+    let hex = avrgcc(object, avr_compiler_flags);
+    let hex_file = File::open(&hex)?;
+    let file_size = hex_file.metadata().unwrap().len();
+    if file_size > 30 * 1024 {
+        eprintln!(
+            "WARNING: The size of the result file ({}KB) is larger than 30KB.",
             file_size / 1024
         );
-        */
-
-        if file_size > 30 * 1024 {
-            eprintln!(
-                "WARNING: The size of the result file ({}KB) is larger than 30KB.",
-                file_size / 1024
-            );
-        }
     }
 
     if let Some(port) = port {
-        avrdude(&hex, port, baudrate);
+        let avrdude_flags = AVRDudeFlags::new(
+            processor.to_owned(),
+            port,
+            matches.value_of("baudrate").unwrap().parse::<u64>()?,
+        );
+        avrdude(&hex, avrdude_flags);
     }
 
     // Remove the hex file if --remove-hex is presented after finishing upload
@@ -107,11 +109,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     if !matches.is_present("emit_llvm") {
         remove_file(&ir_path).unwrap();
     }
-    
-    // Remove object files
-    remove_file(ir_path.clone() + ".eep").unwrap();
-    remove_file(ir_path.clone() + ".elf").unwrap();
-    remove_file(ir_path.clone() + ".o").unwrap();
 
     Ok(())
 }

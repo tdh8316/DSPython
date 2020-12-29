@@ -27,8 +27,8 @@ pub fn static_compiler(ir_path: &str, processor: &str, optimization_level: u8) -
         "--thread-model=single",
     ];
     let mut process = if cfg!(target_os = "windows") {
+        println!("{}", args.join(" "));
         args.insert(0, "/C");
-        println!("{:?}", args.join(" "));
         Command::new("cmd")
             .args(args.as_slice())
             .stdout(Stdio::inherit())
@@ -36,8 +36,8 @@ pub fn static_compiler(ir_path: &str, processor: &str, optimization_level: u8) -
             .spawn()
             .expect("Failed to execute llc!")
     } else {
+        println!("{}", args.join(" "));
         args.insert(0, "-c");
-        println!("{:?}", args.join(" "));
         Command::new("sh")
             .args(args.as_slice())
             .stdout(Stdio::inherit())
@@ -47,7 +47,7 @@ pub fn static_compiler(ir_path: &str, processor: &str, optimization_level: u8) -
     };
     let status = process.wait().unwrap();
     if !status.success() {
-        eprintln!("ERROR: llc failed");
+        panic!("ERROR: llc failed");
     }
 
     return out;
