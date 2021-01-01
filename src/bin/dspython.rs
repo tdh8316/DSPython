@@ -1,10 +1,10 @@
 use std::error::Error;
-use std::fs::{remove_file, write, File};
+use std::fs::{File, remove_file, write};
 
 use clap::{App, Arg, ArgMatches};
 
-use dsp_compiler::{get_assembly, CompilerFlags};
-use dspython::{avrdude, avrgcc, static_compiler, AVRCompilerFlags, AVRDudeFlags};
+use dsp_compiler::{CompilerFlags, get_assembly};
+use dspython::{AVRCompilerFlags, avrdude, AVRDudeFlags, avrgcc, static_compiler};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
@@ -81,7 +81,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let object = static_compiler(&ir_path, processor, optimization_level);
 
     let avr_compiler_flags = AVRCompilerFlags::new(16000000, processor.to_owned());
-    let hex = avrgcc(object, avr_compiler_flags);
+    let hex = avrgcc(&object, avr_compiler_flags);
     let hex_file = File::open(&hex)?;
     let file_size = hex_file.metadata().unwrap().len();
     if file_size > 30 * 1024 {
@@ -99,6 +99,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         );
         avrdude(&hex, avrdude_flags);
     }
+
+    remove_file(&object).unwrap();
+    remove_file(format!("{}.eep", &object)).unwrap();
+    remove_file(format!("{}.elf", &object)).unwrap();
 
     // Remove the hex file if --remove-hex is presented after finishing upload
     if matches.is_present("remove_hex") {

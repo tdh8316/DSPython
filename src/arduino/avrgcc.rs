@@ -16,7 +16,7 @@ impl AVRCompilerFlags {
 }
 
 /// Generate full-linked hex file from an object and return the file path
-pub fn avrgcc(object: String, flags: AVRCompilerFlags) -> String {
+pub fn avrgcc(object: &str, flags: AVRCompilerFlags) -> String {
     // Load the environmental variable: `ARDUINO_DIR`
     let arduino_dir = get_arduino_dir();
 
@@ -140,31 +140,30 @@ pub fn avrgcc(object: String, flags: AVRCompilerFlags) -> String {
             .replace("{AR}", &ar_executable)
             .replace("{MCU}", &flags.mcu)
             .replace("{OBJCOPY}", &objcopy_executable)
-            .replace("{INPUT}", &object);
+            .replace("{INPUT}", object);
         let mut args = command_string.as_str().split(" ").collect::<Vec<&str>>();
 
         let mut process = if cfg!(target_os = "windows") {
-            println!("{}", args.join(" "));
             args.insert(0, "/C");
             Command::new("cmd")
                 .args(args.as_slice())
                 .stdout(Stdio::inherit())
                 .stdout(Stdio::inherit())
                 .spawn()
-                .expect("Failed to execute avrdude!")
+                .expect(&format!("Failed to execute command '{}'", command_string.as_str()))
         } else {
-            println!("{}", args.join(" "));
             args.insert(0, "-c");
             Command::new("sh")
                 .args(args.as_slice())
                 .stdout(Stdio::inherit())
                 .stdout(Stdio::inherit())
                 .spawn()
-                .expect("Failed to execute avrdude!")
+                .expect(&format!("Failed to execute command '{}'", command_string.as_str()))
         };
         let status = process.wait().unwrap();
         if !status.success() {
-            panic!();
+            eprintln!("'{}' returned non-zero status {}", command_string.as_str(), status.code().unwrap_or(-1));
+            panic!("ERROR: avrgcc failed");
         }
     }
 

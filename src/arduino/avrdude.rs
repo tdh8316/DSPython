@@ -75,6 +75,6 @@ pub fn avrdude(target_path: &str, flags: AVRDudeFlags) {
     };
     let status = process.wait().unwrap();
     if !status.success() {
-        panic!("ERROR: avrdude failed");
+        panic!("ERROR: avrdude returned non-zero status {}", status.code().unwrap_or(-1));
     }
 }
