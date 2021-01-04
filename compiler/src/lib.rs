@@ -50,6 +50,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         }
     }
 
+    /// Compile main program
     pub fn compile(&mut self) -> CompileResult<()> {
         let (statements, _doc_string) = get_doc(&self.program.statements);
 
@@ -63,6 +64,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         Ok(())
     }
 
+    /// Compile the given module
     pub fn compile_module(&mut self, module: ast::Program) -> CompileResult<()> {
         let (statements, _doc_string) = get_doc(&module.statements);
 
@@ -76,7 +78,8 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         Ok(())
     }
 
-    pub fn prepare_module(&mut self) -> CompileResult<()> {
+    /// Include and compile standard DSPython Arduino libraries
+    pub fn include_stdlib(&mut self) -> CompileResult<()> {
         let libs = read_dir("./arduino/")
             .expect("Failed to load DSPython Arduino core libraries")
             .map(|res| res.map(|entry| entry.path()))
@@ -130,6 +133,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     }
 }
 
+/// Compile given source and return the LLVM assembly object
 pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMString> {
     // print!("Compiling {}...", &source_path);
     std::io::stdout().flush().unwrap_or_default();
@@ -196,7 +200,7 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
     );
 
     generate_prototypes(compiler.codegen.module, compiler.codegen.context);
-    compiler.prepare_module()?;
+    compiler.include_stdlib()?;
     if let Err(mut e) = compiler.compile() {
         // Enrich error
         e.file = Some(compiler.source_path);

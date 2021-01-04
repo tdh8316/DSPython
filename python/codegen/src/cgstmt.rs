@@ -44,8 +44,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                         "Decorators are not implemented."
                     );
                 };
-                self.compile_stmt_function_def(name, args, body, returns)?;
-                Ok(())
+                self.compile_stmt_function_def(name, args, body, returns)
             }
             StatementType::AnnAssign {
                 target,
@@ -53,7 +52,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 value,
             } => {
                 if let Some(value) = value {
-                    self.compile_stmt_ann_assign(target, value)?;
+                    self.compile_stmt_ann_assign(target, value)
                 }
                 Ok(())
             }
@@ -65,51 +64,10 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                         "Variable unpacking is not implemented."
                     );
                 }
-                self.compile_stmt_assign(targets.first().unwrap(), value)?;
-                Ok(())
+                self.compile_stmt_assign(targets.first().unwrap(), value)
             }
             StatementType::Return { value } => {
-                // Outside function
-                if self._fn_value.is_none() {
-                    return err!(
-                        self,
-                        LLVMCompileErrorType::SyntaxError,
-                        "'return' outside function"
-                    );
-                }
-                if let Some(value) = value {
-                    let return_value = self.emit_expr(value)?;
-
-                    if return_value.get_type() == ValueType::Void {
-                        self.builder.build_return(None);
-                    } else {
-                        // Type check
-                        let fn_type = self
-                            .get_fn_value()?
-                            .get_type()
-                            .get_return_type()
-                            .expect("No return type");
-                        let value_type = return_value.to_basic_value().get_type();
-                        if fn_type != value_type {
-                            return err!(
-                                self,
-                                LLVMCompileErrorType::TypeError,
-                                format!("{:?}", fn_type),
-                                format!("{:?}", value_type)
-                            );
-                        }
-
-                        return_value.invoke_handler(
-                            ValueHandler::new()
-                                .handle_int(&|_, value| self.builder.build_return(Some(&value)))
-                                .handle_float(&|_, value| self.builder.build_return(Some(&value))),
-                        );
-                    }
-                } else {
-                    self.builder.build_return(None);
-                }
-                self.compile_context.returned = true;
-                Ok(())
+                self.compile_stmt_return(value)
             }
             StatementType::ImportFrom {
                 level,
@@ -133,17 +91,15 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             StatementType::If { test, body, orelse } => {
                 match orelse {
                     None /*Only if:*/ => {
-                        self.compile_stmt_conditional(test, body, None)?;
+                        self.compile_stmt_conditional(test, body, None)
                     }
                     Some(statements) => {
-                        self.compile_stmt_conditional(test, body, Some(statements))?;
+                        self.compile_stmt_conditional(test, body, Some(statements))
                     }
                 }
-                Ok(())
             }
             StatementType::While { test, body, orelse } => {
-                self.compile_stmt_while(test, body, orelse)?;
-                Ok(())
+                self.compile_stmt_while(test, body, orelse)
             }
             StatementType::Pass => Ok(()),
             _ => err!(
@@ -476,5 +432,49 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         self.builder.position_at_end(end_bb);
 
         Ok(())
+    }
+
+    fn compile_stmt_return(&mut self, value: &Option<ast::Expression>) -> Result<(), LLVMCompileError>{
+        // Outside function
+                if self._fn_value.is_none() {
+                    return err!(
+                        self,
+                        LLVMCompileErrorType::SyntaxError,
+                        "'return' outside function"
+                    );
+                }
+                if let Some(value) = value {
+                    let return_value = self.emit_expr(value)?;
+
+                    if return_value.get_type() == ValueType::Void {
+                        self.builder.build_return(None);
+                    } else {
+                        // Type check
+                        let fn_type = self
+                            .get_fn_value()?
+                            .get_type()
+                            .get_return_type()
+                            .expect("No return type");
+                        let value_type = return_value.to_basic_value().get_type();
+                        if fn_type != value_type {
+                            return err!(
+                                self,
+                                LLVMCompileErrorType::TypeError,
+                                format!("{:?}", fn_type),
+                                format!("{:?}", value_type)
+                            );
+                        }
+
+                        return_value.invoke_handler(
+                            ValueHandler::new()
+                                .handle_int(&|_, value| self.builder.build_return(Some(&value)))
+                                .handle_float(&|_, value| self.builder.build_return(Some(&value))),
+                        );
+                    }
+                } else {
+                    self.builder.build_return(None);
+                }
+                self.compile_context.returned = true;
+                Ok(())
     }
 }

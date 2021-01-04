@@ -119,10 +119,12 @@ pub fn avrgcc(object: &str, flags: AVRCompilerFlags) -> String {
         "{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}HardwareSerial1.cpp.o",
         "{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}abi.cpp.o",
 
-        // Link DSPython wrapper
+        // Link DSPython wrapper library
         "{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}Serial.cc.o",
         "{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}Builtins.cc.o",
         "{AR} rcs {OUT_PREFIX}core.a {OUT_PREFIX}LLVMArduinoBuiltins.cc.o",
+
+        // Compile everything together
         "{GCC} -w -Os -g -flto -fuse-linker-plugin -Wl,--gc-sections -mmcu={MCU} -o {INPUT}.elf {INPUT} {OUT_PREFIX}core.a -lm",
         "{OBJCOPY} -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0 {INPUT}.elf {INPUT}.eep",
         "{OBJCOPY} -O ihex -R .eeprom {INPUT}.elf {INPUT}.hex",

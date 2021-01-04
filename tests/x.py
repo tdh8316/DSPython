@@ -4,28 +4,19 @@ DSPython test
 
 from arduino import *
 
-trig = 13
-echo = 12
-
 
 def setup():
     """This is a test"""
     serial_begin(9600)
 
-    pin_mode(trig, OUTPUT)
-    pin_mode(echo, INPUT)
+    print("Hello, world!")
 
-    print("DSPython - Measure distance using an ultrasonic sensor")
+    # arr: list = [0, 1, 2]
+
+    # print(arr[0])
+    # print(arr[1])
+    # print(arr[2])
 
 
 def loop():
-    digital_write(trig, HIGH)
-    delay(10)
-    digital_write(trig, LOW)
-
-    duration: float = pulse_in(echo, HIGH)
-    distance: float = float(340 * duration / 10000) / 2
-
-    print(distance)
-
-    delay(1000)
+    return
