@@ -27,11 +27,10 @@ pub fn avrdude(target_path: &str, flags: AVRDudeFlags) {
     // avrdude from Arduino IDE
     let avrdude_executable = format!("{}/{}", arduino_dir, "hardware/tools/avr/bin/avrdude");
 
-    let config_file = format!("{}/{}", arduino_dir, "/hardware/tools/avr/etc/avrdude.conf");
-    let mcu = format!("-p {}", flags.mcu);
-    let port = format!("-P {}", flags.port);
-    let b = format!("-b {}", flags.baudrate);
-    let memtype = format!("-U flash:w:{}:i", target_path);
+    let config_file = format!("-C{}/{}", arduino_dir, "/hardware/tools/avr/etc/avrdude.conf");
+    let mcu = format!("-p{}", flags.mcu);
+    let port = format!("-P{}", flags.port);
+    let memtype = format!("-Uflash:w:{}:i", target_path);
 
     let mut args = vec![
         // avrdude executable path
@@ -43,11 +42,11 @@ pub fn avrdude(target_path: &str, flags: AVRDudeFlags) {
         // micro controller unit
         &mcu,
         // programmer type
-        "-c arduino",
+        "-carduino",
         // serial port
         &port,
         // baudrate
-        &b,
+        "-b115200",
         // Disable auto erase for flash memory
         "-D",
         // memory operation specification
