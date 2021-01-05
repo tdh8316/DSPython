@@ -87,7 +87,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     }
                 };
                 let value = Value::from_basic_value(
-                    *value_type,
+                    value_type.to_owned(),
                     self.builder.build_load(*pointer_value, name),
                 );
                 Ok(value)

@@ -60,30 +60,33 @@ fn main() -> Result<(), Box<dyn Error>> {
         .author(AUTHORS)
         .about("DSPython is a damn small Python compiler intended to use in Arduino.");
 
+    // Parse command-line arguments
     let matches = parse_arguments(app);
-
     let file = matches.value_of("file").expect("no input files");
     let port = matches.value_of("port");
     let cpu = matches.value_of("cpu").unwrap();
-
     let optimization_level = matches.value_of("opt_level").unwrap().parse::<u8>()?;
 
     let compiler_flags = CompilerFlags::new(optimization_level);
 
+    // Generate assembly from given file
+    let ir_path = format!("{}.ll", file);
     let assembly = match get_assembly(file.to_string(), compiler_flags) {
         Ok(llvm_string) => llvm_string,
         Err(e) => panic!("{}", e),
     };
-
-    let ir_path = format!("{}.ll", file);
     write(&ir_path, assembly.to_string())?;
 
+    // Generate object
     let object = static_compiler(&ir_path, cpu, optimization_level);
 
+    // Run avr-gcc to create hex file
     let avr_compiler_flags = AVRCompilerFlags::new(16000000, cpu.to_owned());
     let hex = avrgcc(&object, avr_compiler_flags);
+
+    // Check the size of hex
     let hex_file = File::open(&hex)?;
-    let file_size = hex_file.metadata().unwrap().len();
+    let file_size = hex_file.metadata()?.len();
     if file_size > 30 * 1024 {
         eprintln!(
             "WARNING: The size of the result file ({}KB) is larger than 30KB.",
@@ -91,6 +94,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         );
     }
 
+    // Run avrdude to flash memory if a serial port is presented
     if let Some(port) = port {
         let avrdude_flags = AVRDudeFlags::new(
             cpu.to_owned(),
@@ -100,18 +104,19 @@ fn main() -> Result<(), Box<dyn Error>> {
         avrdude(&hex, avrdude_flags);
     }
 
-    remove_file(&object).unwrap();
-    remove_file(format!("{}.eep", &object)).unwrap();
-    remove_file(format!("{}.elf", &object)).unwrap();
+    // Remove intermediate files
+    remove_file(&object)?;
+    remove_file(format!("{}.eep", &object))?;
+    remove_file(format!("{}.elf", &object))?;
 
     // Remove the hex file if --remove-hex is presented after finishing upload
     if matches.is_present("remove_hex") {
-        remove_file(hex).unwrap();
+        remove_file(hex)?;
     }
 
     // Remove the llvm ir if --emit-llvm is not presented
     if !matches.is_present("emit_llvm") {
-        remove_file(&ir_path).unwrap();
+        remove_file(&ir_path)?;
     }
 
     Ok(())

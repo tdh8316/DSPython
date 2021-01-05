@@ -135,19 +135,22 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
 /// Compile given source and return the LLVM assembly object
 pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<LLVMString> {
-    // print!("Compiling {}...", &source_path);
     std::io::stdout().flush().unwrap_or_default();
 
+    // Yield parse error to compile error
     let to_compile_error =
         |parse_error| CompileError::from_parse_error(parse_error, source_path.clone());
 
     let context = Context::create();
     let module = context.create_module(&source_path);
+
     // Create target data structure for Arduino
     let target_data = TargetData::create("e-P1-p:16:8-i8:8-i16:8-i32:8-i64:8-f32:8-f64:8-n8-a:8");
     module.set_data_layout(&target_data.get_data_layout());
+
     // LLVM triple
     module.set_triple(&TargetTriple::create("avr"));
+
     // Create a root builder context
     let builder = context.create_builder();
 
@@ -169,7 +172,8 @@ pub fn get_assembly(source_path: String, flags: CompilerFlags) -> CompileResult<
         }
     });
 
-    pm_builder.set_size_level(2);
+    // -Os
+    pm_builder.set_size_level(1);
     pm_builder.populate_module_pass_manager(&pass_manager);
 
     let source = read_to_string(&source_path)
