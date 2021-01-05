@@ -52,7 +52,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 value,
             } => {
                 if let Some(value) = value {
-                    self.compile_stmt_ann_assign(target, value)
+                    self.compile_stmt_ann_assign(target, value)?;
                 }
                 Ok(())
             }
@@ -66,9 +66,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 }
                 self.compile_stmt_assign(targets.first().unwrap(), value)
             }
-            StatementType::Return { value } => {
-                self.compile_stmt_return(value)
-            }
+            StatementType::Return { value } => self.compile_stmt_return(value),
             StatementType::ImportFrom {
                 level,
                 module,
@@ -434,47 +432,50 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         Ok(())
     }
 
-    fn compile_stmt_return(&mut self, value: &Option<ast::Expression>) -> Result<(), LLVMCompileError>{
+    fn compile_stmt_return(
+        &mut self,
+        value: &Option<ast::Expression>,
+    ) -> Result<(), LLVMCompileError> {
         // Outside function
-                if self._fn_value.is_none() {
+        if self._fn_value.is_none() {
+            return err!(
+                self,
+                LLVMCompileErrorType::SyntaxError,
+                "'return' outside function"
+            );
+        }
+        if let Some(value) = value {
+            let return_value = self.emit_expr(value)?;
+
+            if return_value.get_type() == ValueType::Void {
+                self.builder.build_return(None);
+            } else {
+                // Type check
+                let fn_type = self
+                    .get_fn_value()?
+                    .get_type()
+                    .get_return_type()
+                    .expect("No return type");
+                let value_type = return_value.to_basic_value().get_type();
+                if fn_type != value_type {
                     return err!(
                         self,
-                        LLVMCompileErrorType::SyntaxError,
-                        "'return' outside function"
+                        LLVMCompileErrorType::TypeError,
+                        format!("{:?}", fn_type),
+                        format!("{:?}", value_type)
                     );
                 }
-                if let Some(value) = value {
-                    let return_value = self.emit_expr(value)?;
 
-                    if return_value.get_type() == ValueType::Void {
-                        self.builder.build_return(None);
-                    } else {
-                        // Type check
-                        let fn_type = self
-                            .get_fn_value()?
-                            .get_type()
-                            .get_return_type()
-                            .expect("No return type");
-                        let value_type = return_value.to_basic_value().get_type();
-                        if fn_type != value_type {
-                            return err!(
-                                self,
-                                LLVMCompileErrorType::TypeError,
-                                format!("{:?}", fn_type),
-                                format!("{:?}", value_type)
-                            );
-                        }
-
-                        return_value.invoke_handler(
-                            ValueHandler::new()
-                                .handle_int(&|_, value| self.builder.build_return(Some(&value)))
-                                .handle_float(&|_, value| self.builder.build_return(Some(&value))),
-                        );
-                    }
-                } else {
-                    self.builder.build_return(None);
-                }
-                self.compile_context.returned = true;
-                Ok(())
+                return_value.invoke_handler(
+                    ValueHandler::new()
+                        .handle_int(&|_, value| self.builder.build_return(Some(&value)))
+                        .handle_float(&|_, value| self.builder.build_return(Some(&value))),
+                );
+            }
+        } else {
+            self.builder.build_return(None);
+        }
+        self.compile_context.returned = true;
+        Ok(())
     }
 }

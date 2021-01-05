@@ -28,10 +28,10 @@ pub fn avrdude(target_path: &str, flags: AVRDudeFlags) {
     let avrdude_executable = format!("{}/{}", arduino_dir, "hardware/tools/avr/bin/avrdude");
 
     let config_file = format!("{}/{}", arduino_dir, "/hardware/tools/avr/etc/avrdude.conf");
-    let mcu = format!("-p{}", flags.mcu);
-    let port = format!("-P{}", flags.port);
-    let b = format!("-b{}", flags.baudrate);
-    let memtype = format!("-Uflash:w:{}:i", target_path);
+    let mcu = format!("-p {}", flags.mcu);
+    let port = format!("-P {}", flags.port);
+    let b = format!("-b {}", flags.baudrate);
+    let memtype = format!("-U flash:w:{}:i", target_path);
 
     let mut args = vec![
         // avrdude executable path
@@ -43,7 +43,7 @@ pub fn avrdude(target_path: &str, flags: AVRDudeFlags) {
         // micro controller unit
         &mcu,
         // programmer type
-        "-carduino",
+        "-c arduino",
         // serial port
         &port,
         // baudrate
@@ -75,6 +75,9 @@ pub fn avrdude(target_path: &str, flags: AVRDudeFlags) {
     };
     let status = process.wait().unwrap();
     if !status.success() {
-        panic!("ERROR: avrdude returned non-zero status {}", status.code().unwrap_or(-1));
+        panic!(
+            "ERROR: avrdude returned non-zero status {}",
+            status.code().unwrap_or(-1),
+        );
     }
 }

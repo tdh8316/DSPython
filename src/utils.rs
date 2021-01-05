@@ -11,10 +11,10 @@ pub fn get_arduino_dir() -> String {
 }
 
 /// Generate non-linked object file from llvm ir
-pub fn static_compiler(ir_path: &str, processor: &str, optimization_level: u8) -> String {
+pub fn static_compiler(ir_path: &str, cpu: &str, optimization_level: u8) -> String {
     let out = format!("{}.o", ir_path);
     let output = format!("-o={}", &out);
-    let processor = format!("-mcpu={}", processor);
+    let cpu = format!("-mcpu={}", cpu);
     let optimization_level = format!("-O{}", optimization_level);
     let mut args = vec![
         "llc",
@@ -23,7 +23,7 @@ pub fn static_compiler(ir_path: &str, processor: &str, optimization_level: u8) -
         &output,
         &optimization_level,
         "--march=avr",
-        &processor,
+        &cpu,
         "--thread-model=single",
     ];
     let mut process = if cfg!(target_os = "windows") {

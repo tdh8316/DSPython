@@ -61,6 +61,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 args,
                 keywords,
             } => {
+                // TODO: kwargs
                 let _keywords = keywords;
                 self.compile_expr_call(function, args)
             }
@@ -145,6 +146,24 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     );
                 }
             },
+            ExpressionType::List { elements } | ExpressionType::Tuple { elements } => {
+                let mut elements_value = vec![];
+                for (_i, element) in elements.iter().enumerate() {
+                    elements_value.push(self.emit_expr(element)?.to_basic_value());
+                }
+                let arr_element_type = (&elements_value).first().unwrap().get_type();
+                // let array_type = (&arr_element_type).array_type(elements.len() as u32);
+                let mut vec_array_value = vec![];
+                for value in elements_value.iter() {
+                    vec_array_value.push(value.into_int_value());
+                }
+                let array_value = arr_element_type
+                    .into_int_type()
+                    .const_array(vec_array_value.as_slice());
+
+                // let array  = self.builder.build_array_alloca(array_type, self.context.i8_type().const_int(3, false), "arr");
+                Ok(Value::Array { value: array_value })
+            }
             ExpressionType::True => Ok(Value::Bool {
                 value: self.context.bool_type().const_int(1, false),
             }),

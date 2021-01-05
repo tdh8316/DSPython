@@ -1,10 +1,10 @@
 use std::error::Error;
-use std::fs::{File, remove_file, write};
+use std::fs::{remove_file, write, File};
 
 use clap::{App, Arg, ArgMatches};
 
-use dsp_compiler::{CompilerFlags, get_assembly};
-use dspython::{AVRCompilerFlags, avrdude, AVRDudeFlags, avrgcc, static_compiler};
+use dsp_compiler::{get_assembly, CompilerFlags};
+use dspython::{avrdude, avrgcc, static_compiler, AVRCompilerFlags, AVRDudeFlags};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
@@ -18,9 +18,9 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
         .long("--upload-to")
         .short("u")
         .takes_value(true);
-    let arg_processor = Arg::with_name("processor")
-        .long("--processor")
-        .short("p")
+    let arg_cpu = Arg::with_name("cpu")
+        .long("--cpu")
+        .short("c")
         .takes_value(true)
         .default_value("atmega328p");
     let arg_opt = Arg::with_name("opt_level")
@@ -48,7 +48,7 @@ fn parse_arguments<'a>(app: App<'a, '_>) -> ArgMatches<'a> {
         .arg(arg_opt)
         .arg(arg_baudrate)
         .arg(arg_port)
-        .arg(arg_processor)
+        .arg(arg_cpu)
         .arg(arg_remove_hex)
         .arg(arg_emit_llvm)
         .get_matches()
@@ -64,7 +64,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let file = matches.value_of("file").expect("no input files");
     let port = matches.value_of("port");
-    let processor = matches.value_of("processor").unwrap();
+    let cpu = matches.value_of("cpu").unwrap();
 
     let optimization_level = matches.value_of("opt_level").unwrap().parse::<u8>()?;
 
@@ -78,9 +78,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let ir_path = format!("{}.ll", file);
     write(&ir_path, assembly.to_string())?;
 
-    let object = static_compiler(&ir_path, processor, optimization_level);
+    let object = static_compiler(&ir_path, cpu, optimization_level);
 
-    let avr_compiler_flags = AVRCompilerFlags::new(16000000, processor.to_owned());
+    let avr_compiler_flags = AVRCompilerFlags::new(16000000, cpu.to_owned());
     let hex = avrgcc(&object, avr_compiler_flags);
     let hex_file = File::open(&hex)?;
     let file_size = hex_file.metadata().unwrap().len();
@@ -93,7 +93,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if let Some(port) = port {
         let avrdude_flags = AVRDudeFlags::new(
-            processor.to_owned(),
+            cpu.to_owned(),
             port,
             matches.value_of("baudrate").unwrap().parse::<u64>()?,
         );

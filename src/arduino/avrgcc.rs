@@ -152,7 +152,10 @@ pub fn avrgcc(object: &str, flags: AVRCompilerFlags) -> String {
                 .stdout(Stdio::inherit())
                 .stdout(Stdio::inherit())
                 .spawn()
-                .expect(&format!("Failed to execute command '{}'", command_string.as_str()))
+                .expect(&format!(
+                    "Failed to execute command '{}'",
+                    command_string.as_str()
+                ))
         } else {
             args.insert(0, "-c");
             Command::new("sh")
@@ -160,11 +163,18 @@ pub fn avrgcc(object: &str, flags: AVRCompilerFlags) -> String {
                 .stdout(Stdio::inherit())
                 .stdout(Stdio::inherit())
                 .spawn()
-                .expect(&format!("Failed to execute command '{}'", command_string.as_str()))
+                .expect(&format!(
+                    "Failed to execute command '{}'",
+                    command_string.as_str()
+                ))
         };
         let status = process.wait().unwrap();
         if !status.success() {
-            eprintln!("'{}' returned non-zero status {}", command_string.as_str(), status.code().unwrap_or(-1));
+            eprintln!(
+                "'{}' returned non-zero status {}",
+                command_string.as_str(),
+                status.code().unwrap_or(-1)
+            );
             panic!("ERROR: avrgcc failed");
         }
     }
