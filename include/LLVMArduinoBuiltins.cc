@@ -12,6 +12,10 @@ extern "C" void digital_write(uint8_t pin, uint8_t val) {
     return digitalWrite(pin, val);
 }
 
+extern "C" void analog_write(uint8_t pin, uint8_t val) {
+    return analogWrite(pin, val);
+}
+
 extern "C" int digital_read(uint8_t pin) {
     return digitalRead(pin);
 }

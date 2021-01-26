@@ -23,6 +23,10 @@ def print(_str: object) -> None:
     ...
 
 
+def println(_str: object) -> None:
+    ...
+
+
 def pin_mode(_pin: int, _mode: int) -> None:
     ...
 
@@ -53,6 +57,10 @@ def flush() -> None:
 
 
 def digital_write(_pin: int, _level: int) -> None:
+    ...
+
+
+def analog_write(_pin: int, _level: int) -> None:
     ...
 
 

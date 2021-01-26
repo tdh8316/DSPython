@@ -27,6 +27,6 @@ def loop():
     duration: float = pulse_in(echo, HIGH)
     distance: float = float(340 * duration / 10000) / 2
 
-    print(distance)
+    print(distance); println("cm")
 
     delay(1000)

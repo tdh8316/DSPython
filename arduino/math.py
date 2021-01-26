@@ -1,6 +1,20 @@
 from arduino.constants import DEG_TO_RAD, RAD_TO_DEG
 
 
+def abs__i__(x: int) -> int:
+    if x > 0:
+        return x
+    else:
+        return 0-x
+
+
+def abs__f__(x: float) -> float:
+    if x > 0.0:
+        return x
+    else:
+        return 0.0-x
+
+
 def min__i__(a: int, b: int) -> int:
     if a < b:
         return a

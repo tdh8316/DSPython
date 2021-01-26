@@ -10,7 +10,7 @@ from arduino import *
 def setup():
     serial_begin(9600)
     print("Hello, Arduino!")
-    print("...from Damn Small Python")
+    println("...from Damn Small Python")
 
 
 def loop():

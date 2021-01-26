@@ -37,10 +37,10 @@ def setup():
     serial_begin(9600)
 
     print("fib(10) Using loop:")
-    print(fib_while(10))
+    println(fib_while(10))
 
     print("fib(10) Using recursion:")
-    print(fib_recursion(10))
+    println(fib_recursion(10))
 
 
 def loop():

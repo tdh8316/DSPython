@@ -42,5 +42,5 @@ def setup():
 
 def loop():
     sensor_value = analog_read(A0)
-    print(sensor_value)
+    println(sensor_value)
     delay(1)

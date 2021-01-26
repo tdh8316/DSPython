@@ -48,6 +48,13 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
         None,
     );
     module.add_function(
+        "analog_write",
+        context
+            .void_type()
+            .fn_type(&[context.i8_type().into(), context.i8_type().into()], false),
+        None,
+    );
+    module.add_function(
         "digital_read",
         context
             .i16_type()
@@ -102,6 +109,28 @@ pub fn generate_prototypes<'a, 'ctx>(module: &'a Module<'ctx>, context: &'ctx Co
     );
     module.add_function(
         "print__s__",
+        context.void_type().fn_type(
+            &[context.i8_type().ptr_type(AddressSpace::Generic).into()],
+            false,
+        ),
+        None,
+    );
+    module.add_function(
+        "println__i__",
+        context
+            .void_type()
+            .fn_type(&[context.i16_type().into()], false),
+        None,
+    );
+    module.add_function(
+        "println__f__",
+        context
+            .void_type()
+            .fn_type(&[context.f32_type().into()], false),
+        None,
+    );
+    module.add_function(
+        "println__s__",
         context.void_type().fn_type(
             &[context.i8_type().ptr_type(AddressSpace::Generic).into()],
             false,
