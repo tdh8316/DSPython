@@ -1,4 +1,7 @@
 # Warning
+
+_**This project will resume when I become a college student.**_
+
 DSPython is in the very initial stage of a development phase and should not be used in a production environment.
 
 You can browse the [examples](https://github.com/tdh8316/dspython/tree/master/examples) directory to learn how DSPython interacts with Arduino.
