@@ -33,7 +33,7 @@ def loop():
     delay(1000)
 ```
 
-To compile and upload this source, you can specific the serial port to upload by providing the `--upload-to` option.
+To compile and upload this source, you can specify the serial port to upload by providing the `--upload-to` option.
 For example, this compiles and uploads the [blink example](https://github.com/tdh8316/dsp/tree/master/examples/Blink.py) to the Arduino:
 
 ```
@@ -82,7 +82,7 @@ These are not impossible, but currently not our goals.
 
 ## The reason this project exists
 I wanted to program Arduino in other languages as well as C++ and thought the Python language would be a good choice.
-But because it is impossible to bring standard Python to Arduino, I decided to make a Python compiler that is available to upload directly to the Arduino.
+That's why I decided to make a Python compiler that is available to upload directly to the Arduino.
 
 The distinctive feature of DSP is that it uses LLVM internally instead of emitting [C++](https://arduino.github.io/arduino-cli/sketch-build-process/).
 
