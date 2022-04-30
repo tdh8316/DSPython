@@ -1,7 +1,5 @@
 # Warning
 
-_**This project will resume when I become a college student.**_
-
 DSPython is in the very initial stage of a development phase and should not be used in a production environment.
 
 You can browse the [examples](https://github.com/tdh8316/dspython/tree/master/examples) directory to learn how DSPython interacts with Arduino.
@@ -89,7 +87,7 @@ The distinctive feature of DSP is that it uses LLVM internally instead of emitti
 # License
 Licensed under the MIT License
 
-Copyright 2020 `Donghyeok Tak`
+Copyright 2022 `Donghyeok Tak`
 
 # Credit
 - The python parser is based on [RustPython](https://github.com/RustPython/RustPython)
