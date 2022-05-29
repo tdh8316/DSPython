@@ -48,10 +48,12 @@ Currently, All examples have been tested only on Arduino Uno.
 # Installation
 ## Requirements
 - LLVM 10 (include llvm-config)
+
 On Windows, the official LLVM releases do not contain many important components.
 You have to use [pre-built LLVM binary](https://ziglang.org/deps/llvm%2bclang%2blld-10.0.0-x86_64-windows-msvc-release-mt.tar.xz) built for [Ziglang](https://github.com/ziglang/zig/wiki/Building-Zig-on-Windows)
 
 - Arduino IDE
+
 You have to set the environment variable named `ARDUINO_DIR` to your arduino IDE location.
 This is because DSPython requires Arduino standard headers, avr-gcc compiler, and avrdude.
 
