@@ -1,3 +1,7 @@
+# Notice
+
+The new version of DSPython is now under the development in [dev branch](https://github.com/tdh8316/dspython/tree/dev)!
+
 # Warning
 
 DSPython is in the very initial stage of a development phase and should not be used in a production environment.
