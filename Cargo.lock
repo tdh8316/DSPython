@@ -744,7 +744,7 @@ checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 [[package]]
 name = "rustpython-ast"
 version = "0.1.0"
-source = "git+https://github.com/RustPython/RustPython#866d06fefe4c702afc70be718d991a7938ba711c"
+source = "git+https://github.com/RustPython/RustPython?rev=866d06f#866d06fefe4c702afc70be718d991a7938ba711c"
 dependencies = [
  "num-bigint",
  "rustpython-common",
@@ -753,7 +753,7 @@ dependencies = [
 [[package]]
 name = "rustpython-bytecode"
 version = "0.1.2"
-source = "git+https://github.com/RustPython/RustPython#866d06fefe4c702afc70be718d991a7938ba711c"
+source = "git+https://github.com/RustPython/RustPython?rev=866d06f#866d06fefe4c702afc70be718d991a7938ba711c"
 dependencies = [
  "bincode",
  "bitflags",
@@ -768,7 +768,7 @@ dependencies = [
 [[package]]
 name = "rustpython-common"
 version = "0.0.0"
-source = "git+https://github.com/RustPython/RustPython#866d06fefe4c702afc70be718d991a7938ba711c"
+source = "git+https://github.com/RustPython/RustPython?rev=866d06f#866d06fefe4c702afc70be718d991a7938ba711c"
 dependencies = [
  "ascii",
  "cfg-if",
@@ -790,7 +790,7 @@ dependencies = [
 [[package]]
 name = "rustpython-compiler"
 version = "0.1.2"
-source = "git+https://github.com/RustPython/RustPython#866d06fefe4c702afc70be718d991a7938ba711c"
+source = "git+https://github.com/RustPython/RustPython?rev=866d06f#866d06fefe4c702afc70be718d991a7938ba711c"
 dependencies = [
  "rustpython-bytecode",
  "rustpython-compiler-core",
@@ -801,7 +801,7 @@ dependencies = [
 [[package]]
 name = "rustpython-compiler-core"
 version = "0.1.2"
-source = "git+https://github.com/RustPython/RustPython#866d06fefe4c702afc70be718d991a7938ba711c"
+source = "git+https://github.com/RustPython/RustPython?rev=866d06f#866d06fefe4c702afc70be718d991a7938ba711c"
 dependencies = [
  "ahash",
  "indexmap",
@@ -816,7 +816,7 @@ dependencies = [
 [[package]]
 name = "rustpython-parser"
 version = "0.1.2"
-source = "git+https://github.com/RustPython/RustPython#866d06fefe4c702afc70be718d991a7938ba711c"
+source = "git+https://github.com/RustPython/RustPython?rev=866d06f#866d06fefe4c702afc70be718d991a7938ba711c"
 dependencies = [
  "ahash",
  "lalrpop",

@@ -2,11 +2,15 @@
 name = "dspython"
 version = "0.1.0"
 edition = "2021"
+author = ["Donghyeok Tak <tdh8316@naver.com>"]
+description = "Damn small Python compiler"
+license = "MIT"
+repository = "https://github.com/tdh8316/DSPython"
 
 [dependencies]
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm13-0"] }
-rustpython-parser = { git = "https://github.com/RustPython/RustPython" }
-rustpython-compiler = { git = "https://github.com/RustPython/RustPython" }
+rustpython-parser = { git = "https://github.com/RustPython/RustPython", rev="866d06f" }
+rustpython-compiler = { git = "https://github.com/RustPython/RustPython", rev="866d06f" }
 clap = { version = "3.2.12", features = ["derive"] }
 num-bigint = "0.4.3"
 num-traits = "0.2.14"
