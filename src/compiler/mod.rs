@@ -1,16 +1,25 @@
 use std::fs::{read_to_string, write};
 
 use inkwell::context::Context;
+use inkwell::module::Module;
+use inkwell::passes::{PassManager, PassManagerBuilder};
+use inkwell::OptimizationLevel;
 use rustpython_parser::ast;
 use rustpython_parser::parser::parse_program;
 
 use crate::codegen::{CodeGen, CodeGenArgs};
 
-pub struct Compiler {}
+pub struct Compiler {
+    optimization_level: u32,
+    size_level: u32,
+}
 
 impl Compiler {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(optimization_level: u32, size_level: u32) -> Self {
+        Self {
+            optimization_level,
+            size_level,
+        }
     }
 
     /// Compile the given file and return the generated file
@@ -22,8 +31,24 @@ impl Compiler {
 
         let context = Context::create();
         let builder = context.create_builder();
+
         // Create the main module
         let module = context.create_module(source_path);
+        // Create the pass manager
+        let pm_builder = PassManagerBuilder::create();
+        pm_builder.set_optimization_level(match self.optimization_level {
+            0 => OptimizationLevel::None,
+            1 => OptimizationLevel::Less,
+            2 => OptimizationLevel::Default,
+            3 => OptimizationLevel::Aggressive,
+            _ => {
+                panic!("Invalid optimization level: {}", self.optimization_level);
+            }
+        });
+        pm_builder.set_size_level(self.size_level);
+        let pm: PassManager<Module> = PassManager::create(());
+        pm_builder.populate_module_pass_manager(&pm);
+
         let mut codegen = CodeGen::new(&context, &module, &builder, CodeGenArgs {});
 
         let (_doc, statements) = split_doc(&ast);
@@ -33,6 +58,8 @@ impl Compiler {
                 panic!("{}", error);
             }
         }
+
+        pm.run_on(&module);
 
         let output_path = format!("{}.ll", source_path);
         write(output_path.as_str(), codegen.emit()).expect("Failed to write LLVM IR");
