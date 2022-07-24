@@ -79,6 +79,12 @@ pub enum ValueType {
 }
 
 impl ValueType {
+    pub fn from_basic_type(ty: BasicTypeEnum) -> Self {
+        match ty {
+            BasicTypeEnum::IntType { .. } => ValueType::I32,
+            _ => panic!("Invalid basic type: {:?}", ty),
+        }
+    }
     pub fn to_basic_type<'ctx>(
         &self,
         context: &'ctx inkwell::context::Context,

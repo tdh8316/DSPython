@@ -1,3 +1,5 @@
+use inkwell::types::{AnyType, BasicTypeEnum};
+use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum};
 use rustpython_parser::ast;
 
 use crate::codegen::errors::CodeGenError;
@@ -13,9 +15,47 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             Constant { value, kind } => self.emit_constant(value, kind),
             Name { id, .. } => self.emit_name(id),
             BinOp { left, op, right } => self.emit_bin_op(left, op, right),
+            Call { func, args, .. } => self.emit_call(func, args),
 
             _ => Err(CodeGenError::Unimplemented(format!("expr: {:#?}", expr))),
         }
+    }
+
+    fn emit_call(
+        &mut self,
+        func: &ast::Expr,
+        args: &Vec<ast::Expr>,
+    ) -> Result<Value<'ctx>, CodeGenError> {
+        let func_name = get_symbol_str_from_expr(func)?;
+        let func = self
+            .module
+            .get_function(&func_name)
+            .ok_or(CodeGenError::NameError(func_name.to_string()))?;
+
+        let mut args_values: Vec<BasicMetadataValueEnum> = Vec::new();
+
+        // Evaluate arguments.
+        for arg_expr in args {
+            let value = self.emit_expr(arg_expr)?;
+            args_values.push(BasicMetadataValueEnum::from(value.to_basic_value()));
+        }
+
+        let call = self
+            .builder
+            .build_call(func, args_values.as_slice(), &func_name);
+        call.set_tail_call(true);
+
+        // Evaluate the return value of the function.
+        let return_value = match call.try_as_basic_value().left() {
+            Some(bv) => Value::from_basic_value(ValueType::from_basic_type(bv.get_type()), bv),
+            None => {
+                // The function does not return a value.
+                // Return None.
+                Value::None
+            }
+        };
+
+        Ok(return_value)
     }
 
     fn emit_bin_op(
@@ -91,7 +131,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     "Unsupported operand type(s) for -: '{:?}' and '{:?}'",
                     left_value.get_type(),
                     right_value.get_type()
-                )))
+                )));
             }
         };
 
@@ -112,7 +152,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     "Unsupported operand type(s) for -: '{:?}' and '{:?}'",
                     left_value.get_type(),
                     right_value.get_type()
-                )))
+                )));
             }
         };
 
@@ -175,7 +215,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     "Unsupported operand type(s) for *: '{:?}' and '{:?}'",
                     left_value.get_type(),
                     right_value.get_type()
-                )))
+                )));
             }
         };
 
@@ -238,7 +278,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     "Unsupported operand type(s) for -: '{:?}' and '{:?}'",
                     left_value.get_type(),
                     right_value.get_type()
-                )))
+                )));
             }
         };
 
@@ -301,7 +341,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     "Unsupported operand type(s) for +: '{:?}' and '{:?}'",
                     left_value.get_type(),
                     right_value.get_type()
-                )))
+                )));
             }
         };
 
@@ -356,5 +396,35 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         }
 
         Err(CodeGenError::Unimplemented(format!("{:?}", value)))
+    }
+}
+
+pub fn get_symbol_str_from_expr(expr: &ast::Expr) -> Result<String, CodeGenError> {
+    use ast::ExprKind::*;
+    match &expr.node {
+        Name { id, .. } => Ok(id.to_string()),
+        _ => Err(CodeGenError::CompileError(format!(
+            "Cannot get symbol name from {:?}",
+            expr
+        ))),
+    }
+}
+
+pub fn get_value_type_from_annotation(annotation: &ast::Expr) -> Result<ValueType, CodeGenError> {
+    match &annotation.node {
+        ast::ExprKind::Name { id, .. } => match id.as_str() {
+            "int" => Ok(ValueType::I32),
+            "float" => Ok(ValueType::F32),
+            "str" => Ok(ValueType::Str),
+            "bool" => Ok(ValueType::Bool),
+            _ => Err(CodeGenError::CompileError(format!(
+                "Unsupported type {}",
+                id
+            ))),
+        },
+        _ => Err(CodeGenError::CompileError(format!(
+            "Cannot determine type from {:?}",
+            annotation
+        ))),
     }
 }

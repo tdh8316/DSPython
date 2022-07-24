@@ -1,6 +1,13 @@
+def add(a: int, b: int):
+    """
+    @return int
+    """
+    return a + b
+
+
 def main():
     """
     @return int
     """
-    a: int = 1
-    return a
+    result: int = add(1, 2)
+    return result

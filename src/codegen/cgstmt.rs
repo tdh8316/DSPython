@@ -1,3 +1,4 @@
+use crate::codegen::cgexpr::{get_symbol_str_from_expr, get_value_type_from_annotation};
 use inkwell::types::BasicMetadataTypeEnum;
 use rustpython_parser::ast;
 
@@ -90,6 +91,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
         // Types of arguments are determined by the type comment.
         let mut param_types: Vec<BasicMetadataTypeEnum<'ctx>> = Vec::new();
+        let mut param_names: Vec<String> = Vec::new();
         let args_iter = std::iter::empty()
             .chain(&args.posonlyargs)
             .chain(&args.args)
@@ -102,11 +104,25 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     "Must have type hint".to_string(),
                 ));
             }
-            println!("type annotation {:?}", arg.node.annotation);
-            // TODO: function arguments
+            // Push the type of the argument to the param_types vector.
+            let value_type = get_value_type_from_annotation(arg.node.annotation.as_ref().unwrap())?;
+            match value_type {
+                ValueType::I32 => {
+                    param_types.push(self.context.i32_type().into());
+                }
+                _ => {
+                    return Err(CodeGenError::CompileError(
+                        "Unknown argument type".to_string(),
+                    ));
+                }
+            }
+
+            // Push the name of the argument to the param_names vector.
+            param_names.push(arg.node.arg.to_string());
         }
 
         // Create function
+        // TODO: Change to get_value_type_from_annotation
         let function_type = match return_type_string.as_str() {
             "None" => self.context.void_type().fn_type(&param_types, false),
             "int" => self.context.i32_type().fn_type(&param_types, false),
@@ -128,6 +144,19 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         // Create entry block and set it as the current block.
         let bb = self.context.append_basic_block(f, "entry");
         self.builder.position_at_end(bb);
+
+        // Declare arguments.
+        for (bv, name) in f.get_param_iter().zip(param_names) {
+            let pointer = self.builder.build_alloca(bv.get_type(), name.as_str());
+            self.builder.build_store(pointer, bv);
+
+            // Add to the symbol table.
+            symbol_table.add_symbol(Symbol::new(
+                name,
+                (ValueType::from_basic_type(bv.get_type()), pointer),
+                SymbolScope::Local,
+            ));
+        }
 
         for statement in statements {
             self.emit_stmt(statement)?;
@@ -160,9 +189,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         annotation: &Box<ast::Expr>,
         value: &Option<Box<ast::Expr>>,
     ) -> Result<(), CodeGenError> {
-        let value_type = self.get_value_type_from_annotation(annotation)?;
+        let value_type = get_value_type_from_annotation(annotation)?;
 
-        let symbol_str = self.get_symbol_str_from_expr(target)?;
+        let symbol_str = get_symbol_str_from_expr(target)?;
         let maybe_symbol = self.symbol_tables.context().get_symbol(symbol_str.as_str());
         let pointer = if let Some(symbol) = maybe_symbol {
             // If the symbol already exists, load it from the symbol table and assign the value.
@@ -202,38 +231,5 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         ));
 
         Ok(())
-    }
-
-    fn get_symbol_str_from_expr(&mut self, expr: &ast::Expr) -> Result<String, CodeGenError> {
-        use ast::ExprKind::*;
-        match &expr.node {
-            Name { id, .. } => Ok(id.to_string()),
-            _ => Err(CodeGenError::CompileError(format!(
-                "Cannot get symbol name from {:?}",
-                expr
-            ))),
-        }
-    }
-
-    fn get_value_type_from_annotation(
-        &mut self,
-        annotation: &ast::Expr,
-    ) -> Result<ValueType, CodeGenError> {
-        match &annotation.node {
-            ast::ExprKind::Name { id, .. } => match id.as_str() {
-                "int" => Ok(ValueType::I32),
-                "float" => Ok(ValueType::F32),
-                "str" => Ok(ValueType::Str),
-                "bool" => Ok(ValueType::Bool),
-                _ => Err(CodeGenError::CompileError(format!(
-                    "Unsupported type {}",
-                    id
-                ))),
-            },
-            _ => Err(CodeGenError::CompileError(format!(
-                "Cannot determine type from {:?}",
-                annotation
-            ))),
-        }
     }
 }
