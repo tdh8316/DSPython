@@ -1,4 +1,5 @@
 use std::fs::{read_to_string, write};
+use std::process::exit;
 
 use inkwell::context::Context;
 use inkwell::module::Module;
@@ -55,7 +56,9 @@ impl Compiler {
         for statement in statements {
             if let Err(error) = codegen.emit_stmt(statement) {
                 // TODO: Verbose error message
-                panic!("{}", error);
+                eprintln!("{}", error);
+                eprintln!("File: \"{}\", {}", source_path, codegen.get_source_location());
+                exit(101);
             }
         }
 

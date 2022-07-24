@@ -13,7 +13,7 @@ impl fmt::Display for CodeGenError {
         match self {
             CodeGenError::NameError(name) => write!(f, "NameError: name '{}' is not defined", name),
             CodeGenError::TypeError(expected, but) => {
-                write!(f, "TypeError: Expected '{}', but found '{}'", expected, but)
+                write!(f, "TypeError: expected '{}', but found '{}'", expected, but)
             }
 
             CodeGenError::Unimplemented(msg) => write!(f, "Unimplemented: {}", msg),

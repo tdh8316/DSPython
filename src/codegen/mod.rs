@@ -47,6 +47,10 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         self.current_source_location = location;
     }
 
+    pub fn get_source_location(&self) -> ast::Location {
+        self.current_source_location
+    }
+
     pub fn emit(&self) -> String {
         self.module.print_to_string().to_string()
     }

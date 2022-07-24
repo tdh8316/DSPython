@@ -50,9 +50,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 Value::F32 { value }
             }
             _ => return Err(
-                CodeGenError::TypeError(
-                    format!("{:?}", left_value.get_type()), format!("{:?}", right_value.get_type()),
-                )
+                CodeGenError::CompileError(format!("Unsupported operand type(s) for +: '{:?}' and '{:?}'", left_value.get_type(), right_value.get_type()))
             ),
         };
 
