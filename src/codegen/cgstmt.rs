@@ -1,10 +1,10 @@
 use inkwell::types::BasicMetadataTypeEnum;
 use rustpython_parser::ast;
 
+use crate::codegen::CodeGen;
 use crate::codegen::errors::CodeGenError;
 use crate::codegen::symbol_table::{Symbol, SymbolScope, SymbolValueTrait};
 use crate::codegen::value::ValueType;
-use crate::codegen::CodeGen;
 use crate::compiler::split_doc;
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
@@ -37,7 +37,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             } => self.emit_function_def(name, args, body, decorator_list, returns, type_comment),
             Return { value } => self.emit_return(value),
 
-            _ => Err(CodeGenError::Unimplemented(format!("stmt: {:?}", stmt))),
+            _ => Err(CodeGenError::Unimplemented(format!("stmt: {:#?}", stmt))),
         }
     }
 
@@ -56,6 +56,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         // }
         // As a workaround, we use the docstring to determine the return type of the function.
         // If the docstring is empty, we assume the function returns None.
+        // """
+        // @return <type>
+        // """
         let (doc, statements) = split_doc(body);
         let return_type_string = if let Some(doc) = doc {
             doc.split("\n")
@@ -63,6 +66,8 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 .iter()
                 .find_map(|line: &&str| {
                     if line.trim().starts_with("@return") {
+                        // Wow, Rust is so beautiful.
+                        // Incredibly easy to read!
                         let type_str = line
                             .split("@return ")
                             .nth(1)
@@ -109,13 +114,13 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             "str" => {
                 return Err(CodeGenError::CompileError(
                     "str is not supported yet".to_string(),
-                ))
+                ));
             }
             "bool" => self.context.bool_type().fn_type(&param_types, false),
             _ => {
                 return Err(CodeGenError::CompileError(
                     "Unsupported return type".to_string(),
-                ))
+                ));
             }
         };
         let f = self.module.add_function(name, function_type, None);
@@ -177,6 +182,11 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 symbol_str
             )));
         };
+
+        // Type checker
+        if value.get_type() != value_type {
+            return Err(CodeGenError::TypeError(format!("{:?}", value_type), format!("{:?}", value.get_type())));
+        }
 
         self.builder.build_store(pointer, value.to_basic_value());
 
