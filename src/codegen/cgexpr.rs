@@ -147,6 +147,59 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         let right_value = self.emit_expr(right)?;
 
         let result_value = match (left_value.get_type(), right_value.get_type()) {
+            (ValueType::I32, ValueType::I32) => {
+               let left_value = self.builder.build_signed_int_to_float(
+                    left_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let right_value = self.builder.build_signed_int_to_float(
+                    right_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let value = self.builder.build_float_div(
+                    left_value,
+                    right_value,
+                    "div",
+                );
+                // In Python, / operator always returns a float.
+                Value::F32 { value }
+            }
+            (ValueType::F32, ValueType::F32) => {
+                let value = self.builder.build_float_div(
+                    left_value.to_basic_value().into_float_value(),
+                    right_value.to_basic_value().into_float_value(),
+                    "div",
+                );
+                Value::F32 { value }
+            }
+            (ValueType::I32, ValueType::F32) => {
+                let left_value = self.builder.build_signed_int_to_float(
+                    left_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let value = self.builder.build_float_div(
+                    left_value,
+                    right_value.to_basic_value().into_float_value(),
+                    "div",
+                );
+                Value::F32 { value }
+            }
+            (ValueType::F32, ValueType::I32) => {
+                let right_value = self.builder.build_signed_int_to_float(
+                    left_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let value = self.builder.build_float_div(
+                    left_value.to_basic_value().into_float_value(),
+                    right_value,
+                    "div",
+                );
+                Value::F32 { value }
+            }
             _ => {
                 return Err(CodeGenError::CompileError(format!(
                     "Unsupported operand type(s) for -: '{:?}' and '{:?}'",

@@ -10,4 +10,4 @@ def main():
     @return int
     """
     result: int = add(1, 2)
-    return result
+    return 10/2.5
