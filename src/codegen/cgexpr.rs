@@ -18,40 +18,291 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         }
     }
 
-    fn emit_bin_op(&mut self, left: &ast::Expr, op: &ast::Operator, right: &ast::Expr) -> Result<Value<'ctx>, CodeGenError> {
+    fn emit_bin_op(
+        &mut self,
+        left: &ast::Expr,
+        op: &ast::Operator,
+        right: &ast::Expr,
+    ) -> Result<Value<'ctx>, CodeGenError> {
         let result_value = match op {
             ast::Operator::Add => self.emit_add(left, right)?,
+            ast::Operator::Sub => self.emit_sub(left, right)?,
+            ast::Operator::Mult => self.emit_mult(left, right)?,
+            ast::Operator::Div => self.emit_div(left, right)?,
+            ast::Operator::Mod => self.emit_mod(left, right)?,
             _ => return Err(CodeGenError::Unimplemented(format!("operator: {:#?}", op))),
         };
         Ok(result_value)
     }
 
-    fn emit_add(&mut self, left: &ast::Expr, right: &ast::Expr) -> Result<Value<'ctx>, CodeGenError> {
+    fn emit_mod(
+        &mut self,
+        left: &ast::Expr,
+        right: &ast::Expr,
+    ) -> Result<Value<'ctx>, CodeGenError> {
         let left_value = self.emit_expr(left)?;
         let right_value = self.emit_expr(right)?;
 
         let result_value = match (left_value.get_type(), right_value.get_type()) {
             (ValueType::I32, ValueType::I32) => {
-                let value = self.builder.build_int_add(left_value.to_basic_value().into_int_value(), right_value.to_basic_value().into_int_value(), "add");
+                let value = self.builder.build_int_signed_rem(
+                    left_value.to_basic_value().into_int_value(),
+                    right_value.to_basic_value().into_int_value(),
+                    "mod",
+                );
                 Value::I32 { value }
             }
             (ValueType::F32, ValueType::F32) => {
-                let value = self.builder.build_float_add(left_value.to_basic_value().into_float_value(), right_value.to_basic_value().into_float_value(), "add");
+                let value = self.builder.build_float_rem(
+                    left_value.to_basic_value().into_float_value(),
+                    right_value.to_basic_value().into_float_value(),
+                    "mod",
+                );
                 Value::F32 { value }
             }
             (ValueType::I32, ValueType::F32) => {
-                let left_value = self.builder.build_signed_int_to_float(left_value.to_basic_value().into_int_value(), self.context.f32_type(), "i32_to_f32");
-                let value = self.builder.build_float_add(left_value, right_value.to_basic_value().into_float_value(), "add");
+                let left_value = self.builder.build_signed_int_to_float(
+                    left_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let value = self.builder.build_float_rem(
+                    left_value,
+                    right_value.to_basic_value().into_float_value(),
+                    "mod",
+                );
                 Value::F32 { value }
             }
             (ValueType::F32, ValueType::I32) => {
-                let right_value = self.builder.build_signed_int_to_float(left_value.to_basic_value().into_int_value(), self.context.f32_type(), "i32_to_f32");
-                let value = self.builder.build_float_add(left_value.to_basic_value().into_float_value(), right_value, "add");
+                let right_value = self.builder.build_signed_int_to_float(
+                    left_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let value = self.builder.build_float_rem(
+                    left_value.to_basic_value().into_float_value(),
+                    right_value,
+                    "mod",
+                );
                 Value::F32 { value }
             }
-            _ => return Err(
-                CodeGenError::CompileError(format!("Unsupported operand type(s) for +: '{:?}' and '{:?}'", left_value.get_type(), right_value.get_type()))
-            ),
+            _ => {
+                return Err(CodeGenError::CompileError(format!(
+                    "Unsupported operand type(s) for -: '{:?}' and '{:?}'",
+                    left_value.get_type(),
+                    right_value.get_type()
+                )))
+            }
+        };
+
+        Ok(result_value)
+    }
+
+    fn emit_div(
+        &mut self,
+        left: &ast::Expr,
+        right: &ast::Expr,
+    ) -> Result<Value<'ctx>, CodeGenError> {
+        let left_value = self.emit_expr(left)?;
+        let right_value = self.emit_expr(right)?;
+
+        let result_value = match (left_value.get_type(), right_value.get_type()) {
+            _ => {
+                return Err(CodeGenError::CompileError(format!(
+                    "Unsupported operand type(s) for -: '{:?}' and '{:?}'",
+                    left_value.get_type(),
+                    right_value.get_type()
+                )))
+            }
+        };
+
+        Ok(result_value)
+    }
+
+    fn emit_mult(
+        &mut self,
+        left: &ast::Expr,
+        right: &ast::Expr,
+    ) -> Result<Value<'ctx>, CodeGenError> {
+        let left_value = self.emit_expr(left)?;
+        let right_value = self.emit_expr(right)?;
+
+        let result_value = match (left_value.get_type(), right_value.get_type()) {
+            (ValueType::I32, ValueType::I32) => {
+                let value = self.builder.build_int_mul(
+                    left_value.to_basic_value().into_int_value(),
+                    right_value.to_basic_value().into_int_value(),
+                    "mul",
+                );
+                Value::I32 { value }
+            }
+            (ValueType::F32, ValueType::F32) => {
+                let value = self.builder.build_float_mul(
+                    left_value.to_basic_value().into_float_value(),
+                    right_value.to_basic_value().into_float_value(),
+                    "mul",
+                );
+                Value::F32 { value }
+            }
+            (ValueType::I32, ValueType::F32) => {
+                let left_value = self.builder.build_signed_int_to_float(
+                    left_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let value = self.builder.build_float_mul(
+                    left_value,
+                    right_value.to_basic_value().into_float_value(),
+                    "mul",
+                );
+                Value::F32 { value }
+            }
+            (ValueType::F32, ValueType::I32) => {
+                let right_value = self.builder.build_signed_int_to_float(
+                    left_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let value = self.builder.build_float_mul(
+                    left_value.to_basic_value().into_float_value(),
+                    right_value,
+                    "mul",
+                );
+                Value::F32 { value }
+            }
+            _ => {
+                return Err(CodeGenError::CompileError(format!(
+                    "Unsupported operand type(s) for *: '{:?}' and '{:?}'",
+                    left_value.get_type(),
+                    right_value.get_type()
+                )))
+            }
+        };
+
+        Ok(result_value)
+    }
+
+    fn emit_sub(
+        &mut self,
+        left: &ast::Expr,
+        right: &ast::Expr,
+    ) -> Result<Value<'ctx>, CodeGenError> {
+        let left_value = self.emit_expr(left)?;
+        let right_value = self.emit_expr(right)?;
+
+        let result_value = match (left_value.get_type(), right_value.get_type()) {
+            (ValueType::I32, ValueType::I32) => {
+                let value = self.builder.build_int_sub(
+                    left_value.to_basic_value().into_int_value(),
+                    right_value.to_basic_value().into_int_value(),
+                    "sub",
+                );
+                Value::I32 { value }
+            }
+            (ValueType::F32, ValueType::F32) => {
+                let value = self.builder.build_float_sub(
+                    left_value.to_basic_value().into_float_value(),
+                    right_value.to_basic_value().into_float_value(),
+                    "sub",
+                );
+                Value::F32 { value }
+            }
+            (ValueType::I32, ValueType::F32) => {
+                let left_value = self.builder.build_signed_int_to_float(
+                    left_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let value = self.builder.build_float_sub(
+                    left_value,
+                    right_value.to_basic_value().into_float_value(),
+                    "sub",
+                );
+                Value::F32 { value }
+            }
+            (ValueType::F32, ValueType::I32) => {
+                let right_value = self.builder.build_signed_int_to_float(
+                    left_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let value = self.builder.build_float_sub(
+                    left_value.to_basic_value().into_float_value(),
+                    right_value,
+                    "sub",
+                );
+                Value::F32 { value }
+            }
+            _ => {
+                return Err(CodeGenError::CompileError(format!(
+                    "Unsupported operand type(s) for -: '{:?}' and '{:?}'",
+                    left_value.get_type(),
+                    right_value.get_type()
+                )))
+            }
+        };
+
+        Ok(result_value)
+    }
+
+    fn emit_add(
+        &mut self,
+        left: &ast::Expr,
+        right: &ast::Expr,
+    ) -> Result<Value<'ctx>, CodeGenError> {
+        let left_value = self.emit_expr(left)?;
+        let right_value = self.emit_expr(right)?;
+
+        let result_value = match (left_value.get_type(), right_value.get_type()) {
+            (ValueType::I32, ValueType::I32) => {
+                let value = self.builder.build_int_add(
+                    left_value.to_basic_value().into_int_value(),
+                    right_value.to_basic_value().into_int_value(),
+                    "add",
+                );
+                Value::I32 { value }
+            }
+            (ValueType::F32, ValueType::F32) => {
+                let value = self.builder.build_float_add(
+                    left_value.to_basic_value().into_float_value(),
+                    right_value.to_basic_value().into_float_value(),
+                    "add",
+                );
+                Value::F32 { value }
+            }
+            (ValueType::I32, ValueType::F32) => {
+                let left_value = self.builder.build_signed_int_to_float(
+                    left_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let value = self.builder.build_float_add(
+                    left_value,
+                    right_value.to_basic_value().into_float_value(),
+                    "add",
+                );
+                Value::F32 { value }
+            }
+            (ValueType::F32, ValueType::I32) => {
+                let right_value = self.builder.build_signed_int_to_float(
+                    left_value.to_basic_value().into_int_value(),
+                    self.context.f32_type(),
+                    "i32_to_f32",
+                );
+                let value = self.builder.build_float_add(
+                    left_value.to_basic_value().into_float_value(),
+                    right_value,
+                    "add",
+                );
+                Value::F32 { value }
+            }
+            _ => {
+                return Err(CodeGenError::CompileError(format!(
+                    "Unsupported operand type(s) for +: '{:?}' and '{:?}'",
+                    left_value.get_type(),
+                    right_value.get_type()
+                )))
+            }
         };
 
         Ok(result_value)

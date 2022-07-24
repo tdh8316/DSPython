@@ -1,10 +1,10 @@
 use inkwell::types::BasicMetadataTypeEnum;
 use rustpython_parser::ast;
 
-use crate::codegen::CodeGen;
 use crate::codegen::errors::CodeGenError;
 use crate::codegen::symbol_table::{Symbol, SymbolScope, SymbolValueTrait};
 use crate::codegen::value::ValueType;
+use crate::codegen::CodeGen;
 use crate::compiler::split_doc;
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
@@ -185,7 +185,10 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
         // Type checker
         if value.get_type() != value_type {
-            return Err(CodeGenError::TypeError(format!("{:?}", value_type), format!("{:?}", value.get_type())));
+            return Err(CodeGenError::TypeError(
+                format!("{:?}", value_type),
+                format!("{:?}", value.get_type()),
+            ));
         }
 
         self.builder.build_store(pointer, value.to_basic_value());

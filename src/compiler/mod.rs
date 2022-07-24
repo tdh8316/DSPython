@@ -57,7 +57,11 @@ impl Compiler {
             if let Err(error) = codegen.emit_stmt(statement) {
                 // TODO: Verbose error message
                 eprintln!("{}", error);
-                eprintln!("File: \"{}\", {}", source_path, codegen.get_source_location());
+                eprintln!(
+                    "File: \"{}\", {}",
+                    source_path,
+                    codegen.get_source_location()
+                );
                 exit(101);
             }
         }
