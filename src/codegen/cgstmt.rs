@@ -1,16 +1,28 @@
-use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::IntPredicate;
+use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::values::BasicValue;
 use rustpython_parser::ast;
 
 use crate::codegen::cgexpr::{get_symbol_str_from_expr, get_value_type_from_annotation};
+use crate::codegen::CodeGen;
 use crate::codegen::errors::CodeGenError;
 use crate::codegen::symbol_table::{Symbol, SymbolScope, SymbolValueTrait};
 use crate::codegen::value::{Value, ValueType};
-use crate::codegen::CodeGen;
 use crate::compiler::split_doc;
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
+    pub fn emit_stmts(&mut self, stmts: &[ast::Stmt]) -> Result<(), CodeGenError> {
+        for stmt in stmts {
+            self.emit_stmt(stmt)?;
+            match &stmt.node {
+                ast::StmtKind::Return { .. } => break,
+                _ => {}
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn emit_stmt(&mut self, stmt: &ast::Stmt) -> Result<(), CodeGenError> {
         self.set_source_location(stmt.location);
         use ast::StmtKind::*;
@@ -79,16 +91,32 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
         // Emit at if.then block
         self.builder.position_at_end(then_block);
-        for stmt in body {
-            self.emit_stmt(stmt)?;
+        self.emit_stmts(body)?;
+        // Jump to the end block at the end of the then block if not returned
+
+        match body.last().unwrap().node {
+            ast::StmtKind::Return { .. } => {
+                // Do nothing
+            }
+            _ => {
+                self.builder.build_unconditional_branch(end_block);
+            }
         }
-        // Jump to the end block at the end of the then block
-        self.builder.build_unconditional_branch(end_block);
+
 
         // Emit at if.else block
         self.builder.position_at_end(else_block);
-        for stmt in orelse {
-            self.emit_stmt(stmt)?;
+        self.emit_stmts(orelse)?;
+        // Jump to the end block at the end of the then block if not returned
+        if let Some(last_stmt) = orelse.last() {
+            match last_stmt.node {
+                ast::StmtKind::Return { .. } => {
+                    // Do nothing
+                }
+                _ => {
+                    self.builder.build_unconditional_branch(end_block);
+                }
+            }
         }
 
         // Jump to the end block at the end of the else block
@@ -200,8 +228,8 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         let f = self.module.add_function(name, function_type, None);
 
         // Create entry block and set it as the current block.
-        let bb = self.context.append_basic_block(f, "entry");
-        self.builder.position_at_end(bb);
+        let entry_block = self.context.append_basic_block(f, "entry");
+        self.builder.position_at_end(entry_block);
 
         // Declare arguments.
         for (bv, name) in f.get_param_iter().zip(param_names) {
@@ -218,9 +246,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         }
 
         // Emit statements.
-        for statement in statements {
-            self.emit_stmt(statement)?;
-        }
+        self.emit_stmts(statements)?;
 
         // Pop the current namespace.
         self.symbol_tables.pop_namespace();

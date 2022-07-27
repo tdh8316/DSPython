@@ -80,7 +80,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     ast::Cmpop::GtE => IntPredicate::SGE,
                     _ => {
                         return Err(CodeGenError::Unimplemented(format!(
-                            "{:?}  for i32 and i32 is not implemented",
+                            "{:?} for i32 and i32 is not implemented",
                             ops[0]
                         )))
                     }
