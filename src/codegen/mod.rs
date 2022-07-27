@@ -3,7 +3,6 @@ use inkwell::context::Context;
 use inkwell::module::Module;
 use rustpython_parser::ast;
 
-use crate::codegen::errors::CodeGenError;
 use crate::codegen::symbol_table::{SymbolTable, SymbolTables};
 
 mod cgexpr;

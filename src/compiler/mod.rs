@@ -3,8 +3,9 @@ use std::process::exit;
 
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::OptimizationLevel;
+use inkwell::passes::{PassManager, PassManagerBuilder};
+use inkwell::support::LLVMString;
 use rustpython_parser::ast;
 use rustpython_parser::parser::parse_program;
 
@@ -66,7 +67,14 @@ impl Compiler {
             }
         }
 
-        pm.run_on(&module);
+        // if let Err(error) = module.verify() {
+        //     eprintln!("Module verify failed: {}", error);
+        //     exit(101);
+        // }
+
+        if self.optimization_level > 0 {
+            pm.run_on(&module);
+        }
 
         let output_path = format!("{}.ll", source_path);
         write(output_path.as_str(), codegen.emit()).expect("Failed to write LLVM IR");

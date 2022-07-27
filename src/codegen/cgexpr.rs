@@ -1,5 +1,6 @@
 use inkwell::types::{AnyType, BasicTypeEnum};
 use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum};
+use inkwell::IntPredicate;
 use rustpython_parser::ast;
 
 use crate::codegen::errors::CodeGenError;
@@ -16,9 +17,91 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             Name { id, .. } => self.emit_name(id),
             BinOp { left, op, right } => self.emit_bin_op(left, op, right),
             Call { func, args, .. } => self.emit_call(func, args),
+            Compare {
+                left,
+                ops,
+                comparators,
+            } => self.emit_compare(left, ops, comparators),
+            UnaryOp { op, operand } => self.emit_unary_op(op, operand),
 
             _ => Err(CodeGenError::Unimplemented(format!("expr: {:#?}", expr))),
         }
+    }
+
+    fn emit_unary_op(
+        &mut self,
+        op: &ast::Unaryop,
+        operand: &ast::Expr,
+    ) -> Result<Value<'ctx>, CodeGenError> {
+        let operand = self.emit_expr(operand)?;
+
+        return match op {
+            ast::Unaryop::USub => {
+                // TODO
+                // Ok(Value::I32 {
+                //     value: self.builder.build_int_sub(self.context.i32_type().const_int(0, true), operand.to_basic_value().into_int_value(), "neg"),
+                // })
+                Ok(Value::I32 {
+                    value: self
+                        .builder
+                        .build_int_sub(
+                            self.context.i32_type().const_int(0, true ),
+                            operand.to_basic_value().into_int_value(),
+                            "neg"),
+                })
+            }
+            _ => Err(CodeGenError::Unimplemented(format!("unary op: {:#?}", op))),
+        };
+    }
+
+    fn emit_compare(
+        &mut self,
+        left: &ast::Expr,
+        ops: &[ast::Cmpop],
+        comparators: &Vec<ast::Expr>,
+    ) -> Result<Value<'ctx>, CodeGenError> {
+        if ops.len() > 1 || comparators.len() > 2 {
+            return Err(CodeGenError::Unimplemented(
+                "Chained comparisons are not supported".to_string(),
+            ));
+        }
+
+        let left = self.emit_expr(left)?;
+        let right = self.emit_expr(&comparators[0])?;
+
+        let value = match (left.get_type(), right.get_type()) {
+            (ValueType::I32, ValueType::I32) => {
+                let operator = match &ops[0] {
+                    ast::Cmpop::Eq => IntPredicate::EQ,
+                    ast::Cmpop::NotEq => IntPredicate::NE,
+                    ast::Cmpop::Lt => IntPredicate::SLT,
+                    ast::Cmpop::LtE => IntPredicate::SLE,
+                    ast::Cmpop::Gt => IntPredicate::SGT,
+                    ast::Cmpop::GtE => IntPredicate::SGE,
+                    _ => {
+                        return Err(CodeGenError::Unimplemented(format!(
+                            "{:?}  for i32 and i32 is not implemented",
+                            ops[0]
+                        )))
+                    }
+                };
+                self.builder.build_int_compare(
+                    operator,
+                    left.to_basic_value().into_int_value(),
+                    right.to_basic_value().into_int_value(),
+                    "eq",
+                )
+            }
+            _ => {
+                return Err(CodeGenError::CompileError(format!(
+                    "Cannot compare {:?} and {:?}",
+                    left.get_type(),
+                    right.get_type()
+                )));
+            }
+        };
+
+        Ok(Value::Bool { value })
     }
 
     fn emit_call(
@@ -42,7 +125,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
         let call = self
             .builder
-            .build_call(func, args_values.as_slice(), &func_name);
+            .build_call(func, args_values.as_slice(), func_name.as_str());
         call.set_tail_call(true);
 
         // Evaluate the return value of the function.
@@ -148,7 +231,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
         let result_value = match (left_value.get_type(), right_value.get_type()) {
             (ValueType::I32, ValueType::I32) => {
-               let left_value = self.builder.build_signed_int_to_float(
+                let left_value = self.builder.build_signed_int_to_float(
                     left_value.to_basic_value().into_int_value(),
                     self.context.f32_type(),
                     "i32_to_f32",
@@ -158,11 +241,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     self.context.f32_type(),
                     "i32_to_f32",
                 );
-                let value = self.builder.build_float_div(
-                    left_value,
-                    right_value,
-                    "div",
-                );
+                let value = self.builder.build_float_div(left_value, right_value, "div");
                 // In Python, / operator always returns a float.
                 Value::F32 { value }
             }
@@ -402,15 +481,13 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
     }
 
     fn emit_name(&mut self, id: &String) -> Result<Value<'ctx>, CodeGenError> {
-        let maybe_symbol = self.symbol_tables.context().get_symbol(id);
-        match maybe_symbol {
-            // Return the address of the symbol if it exists.
-            Some(symbol) => Ok(Value::from_basic_value(
+        if let Some(symbol)= self.symbol_tables.context().get_symbol(id) {
+            Ok(Value::from_basic_value(
                 symbol.value.get_type(),
                 self.builder.build_load(symbol.value.get_pointer(), id),
-            )),
-            // If the symbol does not exist, raise a NameError.
-            None => Err(CodeGenError::NameError(id.to_string())),
+            ))
+        } else {
+            Err(CodeGenError::NameError(id.to_string()))
         }
     }
 

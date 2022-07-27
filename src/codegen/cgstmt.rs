@@ -1,10 +1,12 @@
-use crate::codegen::cgexpr::{get_symbol_str_from_expr, get_value_type_from_annotation};
 use inkwell::types::BasicMetadataTypeEnum;
+use inkwell::IntPredicate;
+use inkwell::values::BasicValue;
 use rustpython_parser::ast;
 
+use crate::codegen::cgexpr::{get_symbol_str_from_expr, get_value_type_from_annotation};
 use crate::codegen::errors::CodeGenError;
 use crate::codegen::symbol_table::{Symbol, SymbolScope, SymbolValueTrait};
-use crate::codegen::value::ValueType;
+use crate::codegen::value::{Value, ValueType};
 use crate::codegen::CodeGen;
 use crate::compiler::split_doc;
 
@@ -36,10 +38,66 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 returns,
                 type_comment,
             } => self.emit_function_def(name, args, body, decorator_list, returns, type_comment),
+            If { test, body, orelse } => self.emit_if(test, body, orelse),
             Return { value } => self.emit_return(value),
 
             _ => Err(CodeGenError::Unimplemented(format!("stmt: {:#?}", stmt))),
         }
+    }
+
+    fn emit_if(
+        &mut self,
+        test: &ast::Expr,
+        body: &[ast::Stmt],
+        orelse: &[ast::Stmt],
+    ) -> Result<(), CodeGenError> {
+        let parent = self.module.get_last_function().unwrap();
+
+        let then_block = self.context.append_basic_block(parent, "if.then");
+        let else_block = self.context.append_basic_block(parent, "if.else");
+        let end_block = self.context.append_basic_block(parent, "if.end");
+
+        let comparison = match self.emit_expr(test)? {
+            Value::None => self.context.bool_type().const_int(0, false),
+            Value::Bool { value } => value,
+            Value::I32 { value } => self.builder.build_int_compare(
+                IntPredicate::SGT,
+                value,
+                self.context.i32_type().const_zero(),
+                "if.cmp",
+            ),
+            _ => {
+                return Err(CodeGenError::CompileError(
+                    "Cannot make comparison".to_string(),
+                ));
+            }
+        };
+
+        // Build the conditional branch instruction
+        self.builder
+            .build_conditional_branch(comparison, then_block, else_block);
+
+        // Emit at if.then block
+        self.builder.position_at_end(then_block);
+        for stmt in body {
+            self.emit_stmt(stmt)?;
+        }
+        // Jump to the end block at the end of the then block
+        self.builder.build_unconditional_branch(end_block);
+
+        // Emit at if.else block
+        self.builder.position_at_end(else_block);
+        for stmt in orelse {
+            self.emit_stmt(stmt)?;
+        }
+
+        // Jump to the end block at the end of the else block
+        self.builder.build_unconditional_branch(end_block);
+
+        // Set the current block to the end block
+        self.builder.position_at_end(end_block);
+
+        Ok(())
     }
 
     fn emit_function_def(
@@ -47,9 +105,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         name: &str,
         args: &ast::Arguments,
         body: &[ast::Stmt],
-        decorator_list: &[ast::Expr],
-        returns: &Option<Box<ast::Expr>>,
-        type_comment: &Option<String>,
+        _decorator_list: &[ast::Expr],
+        _returns: &Option<Box<ast::Expr>>,
+        _type_comment: &Option<String>,
     ) -> Result<(), CodeGenError> {
         // RustPython Parser does not support function type comment yet.
         // if type_comment.is_none() {
@@ -87,7 +145,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         };
 
         // Create a new symbol table of the function namespace.
-        let mut symbol_table = self.symbol_tables.push_namespace(name.to_string());
+        let symbol_table = self.symbol_tables.push_namespace(name.to_string());
 
         // Types of arguments are determined by the type comment.
         let mut param_types: Vec<BasicMetadataTypeEnum<'ctx>> = Vec::new();
@@ -147,6 +205,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
         // Declare arguments.
         for (bv, name) in f.get_param_iter().zip(param_names) {
+            bv.set_name(name.as_str());
             let pointer = self.builder.build_alloca(bv.get_type(), name.as_str());
             self.builder.build_store(pointer, bv);
 
@@ -158,6 +217,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             ));
         }
 
+        // Emit statements.
         for statement in statements {
             self.emit_stmt(statement)?;
         }
@@ -180,6 +240,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             // Return None if the return value is not specified.
             self.builder.build_return(None);
         }
+        // TODO: Prevent to emit after the return statement.
         Ok(())
     }
 
