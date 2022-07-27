@@ -1,5 +1,4 @@
-use inkwell::types::{AnyType, BasicTypeEnum};
-use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum};
+use inkwell::values::BasicMetadataValueEnum;
 use inkwell::IntPredicate;
 use rustpython_parser::ast;
 
@@ -37,17 +36,15 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
         return match op {
             ast::Unaryop::USub => {
-                // TODO
                 // Ok(Value::I32 {
                 //     value: self.builder.build_int_sub(self.context.i32_type().const_int(0, true), operand.to_basic_value().into_int_value(), "neg"),
                 // })
                 Ok(Value::I32 {
-                    value: self
-                        .builder
-                        .build_int_sub(
-                            self.context.i32_type().const_int(0, true ),
-                            operand.to_basic_value().into_int_value(),
-                            "neg"),
+                    value: self.builder.build_int_sub(
+                        self.context.i32_type().const_int(0, true),
+                        operand.to_basic_value().into_int_value(),
+                        "neg",
+                    ),
                 })
             }
             _ => Err(CodeGenError::Unimplemented(format!("unary op: {:#?}", op))),
@@ -481,7 +478,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
     }
 
     fn emit_name(&mut self, id: &String) -> Result<Value<'ctx>, CodeGenError> {
-        if let Some(symbol)= self.symbol_tables.context().get_symbol(id) {
+        if let Some(symbol) = self.symbol_tables.context().get_symbol(id) {
             Ok(Value::from_basic_value(
                 symbol.value.get_type(),
                 self.builder.build_load(symbol.value.get_pointer(), id),

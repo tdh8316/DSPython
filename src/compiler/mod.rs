@@ -3,9 +3,8 @@ use std::process::exit;
 
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::OptimizationLevel;
 use inkwell::passes::{PassManager, PassManagerBuilder};
-use inkwell::support::LLVMString;
+use inkwell::OptimizationLevel;
 use rustpython_parser::ast;
 use rustpython_parser::parser::parse_program;
 

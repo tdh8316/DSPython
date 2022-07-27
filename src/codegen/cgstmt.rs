@@ -1,13 +1,13 @@
-use inkwell::IntPredicate;
 use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::values::BasicValue;
+use inkwell::IntPredicate;
 use rustpython_parser::ast;
 
 use crate::codegen::cgexpr::{get_symbol_str_from_expr, get_value_type_from_annotation};
-use crate::codegen::CodeGen;
 use crate::codegen::errors::CodeGenError;
 use crate::codegen::symbol_table::{Symbol, SymbolScope, SymbolValueTrait};
 use crate::codegen::value::{Value, ValueType};
+use crate::codegen::CodeGen;
 use crate::compiler::split_doc;
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
@@ -16,7 +16,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             self.emit_stmt(stmt)?;
             match &stmt.node {
                 ast::StmtKind::Return { .. } => break,
-                _ => {}
+                _ => {
+                    // Do nothing
+                }
             }
         }
 
@@ -103,11 +105,10 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             }
         }
 
-
         // Emit at if.else block
         self.builder.position_at_end(else_block);
         self.emit_stmts(orelse)?;
-        // Jump to the end block at the end of the then block if not returned
+        // Jump to the end block at the end of the else block if not returned
         if let Some(last_stmt) = orelse.last() {
             match last_stmt.node {
                 ast::StmtKind::Return { .. } => {
