@@ -227,6 +227,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         let right_value = self.emit_expr(right)?;
 
         let result_value = match (left_value.get_type(), right_value.get_type()) {
+            // In Python, / operator always returns a float.
             (ValueType::I32, ValueType::I32) => {
                 let left_value = self.builder.build_signed_int_to_float(
                     left_value.to_basic_value().into_int_value(),
@@ -239,7 +240,6 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                     "i32_to_f32",
                 );
                 let value = self.builder.build_float_div(left_value, right_value, "div");
-                // In Python, / operator always returns a float.
                 Value::F32 { value }
             }
             (ValueType::F32, ValueType::F32) => {
@@ -278,7 +278,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             }
             _ => {
                 return Err(CodeGenError::CompileError(format!(
-                    "Unsupported operand type(s) for -: '{:?}' and '{:?}'",
+                    "Unsupported operand type(s) for /: '{:?}' and '{:?}'",
                     left_value.get_type(),
                     right_value.get_type()
                 )));
@@ -493,36 +493,27 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         value: &ast::Constant,
         _kind: &Option<String>,
     ) -> Result<Value<'ctx>, CodeGenError> {
-        match value {
-            ast::Constant::None => {
-                return Ok(Value::None);
-            }
-            ast::Constant::Bool(bool) => {
-                return Ok(Value::Bool {
-                    value: self.context.bool_type().const_int(*bool as u64, false),
-                });
-            }
-            ast::Constant::Str(_) => {}
-            ast::Constant::Bytes(_) => {}
-            ast::Constant::Int(value) => {
-                return Ok(Value::I32 {
-                    value: self
-                        .context
-                        .i32_type()
-                        .const_int(truncate_bigint_to_u64(value), true),
-                });
-            }
-            ast::Constant::Tuple(_) => {}
-            ast::Constant::Float(value) => {
-                return Ok(Value::F32 {
-                    value: self.context.f32_type().const_float(*value),
-                });
-            }
-            ast::Constant::Complex { .. } => {}
-            ast::Constant::Ellipsis => {}
-        }
-
-        Err(CodeGenError::Unimplemented(format!("{:?}", value)))
+        return match value {
+            ast::Constant::None => Ok(Value::None),
+            ast::Constant::Bool(bool) => Ok(Value::Bool {
+                value: self.context.bool_type().const_int(*bool as u64, false),
+            }),
+            // ast::Constant::Str(_) => {}
+            // ast::Constant::Bytes(_) => {}
+            ast::Constant::Int(value) => Ok(Value::I32 {
+                value: self
+                    .context
+                    .i32_type()
+                    .const_int(truncate_bigint_to_u64(value), true),
+            }),
+            // ast::Constant::Tuple(_) => {}
+            ast::Constant::Float(value) => Ok(Value::F32 {
+                value: self.context.f32_type().const_float(*value),
+            }),
+            // ast::Constant::Complex { .. } => {}
+            // ast::Constant::Ellipsis => {}
+            _ => Err(CodeGenError::Unimplemented(format!("{:?}", value))),
+        };
     }
 }
 

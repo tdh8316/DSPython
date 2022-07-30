@@ -66,10 +66,10 @@ impl Compiler {
             }
         }
 
-        // if let Err(error) = module.verify() {
-        //     eprintln!("Module verify failed: {}", error);
-        //     exit(101);
-        // }
+        if let Err(error) = module.verify() {
+            eprintln!("Module verify failed: {}", error);
+            exit(101);
+        }
 
         if self.optimization_level > 0 {
             pm.run_on(&module);

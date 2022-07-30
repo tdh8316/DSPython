@@ -25,4 +25,3 @@ def main():
         return 100
 
     return 90
-

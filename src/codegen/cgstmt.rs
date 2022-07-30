@@ -15,9 +15,12 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         for stmt in stmts {
             self.emit_stmt(stmt)?;
             match &stmt.node {
-                ast::StmtKind::Return { .. } => break,
+                ast::StmtKind::Return { .. } => {
+                    // Break out of the loop if returned
+                    break;
+                }
                 _ => {
-                    // Do nothing
+                    // continue
                 }
             }
         }
@@ -94,11 +97,11 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         // Emit at if.then block
         self.builder.position_at_end(then_block);
         self.emit_stmts(body)?;
-        // Jump to the end block at the end of the then block if not returned
 
+        // Jump to the end block at the end of the then block if not returned
         match body.last().unwrap().node {
             ast::StmtKind::Return { .. } => {
-                // Do nothing
+                // Do not jump to the end block if returned
             }
             _ => {
                 self.builder.build_unconditional_branch(end_block);
@@ -108,20 +111,21 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         // Emit at if.else block
         self.builder.position_at_end(else_block);
         self.emit_stmts(orelse)?;
+
         // Jump to the end block at the end of the else block if not returned
         if let Some(last_stmt) = orelse.last() {
             match last_stmt.node {
                 ast::StmtKind::Return { .. } => {
-                    // Do nothing
+                    // Do not jump to the end block if returned
                 }
                 _ => {
                     self.builder.build_unconditional_branch(end_block);
                 }
             }
+        } else {
+            // Jump to the end block if there is no else block
+            self.builder.build_unconditional_branch(end_block);
         }
-
-        // Jump to the end block at the end of the else block
-        self.builder.build_unconditional_branch(end_block);
 
         // Set the current block to the end block
         self.builder.position_at_end(end_block);
@@ -267,7 +271,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             // Return None if the return value is not specified.
             self.builder.build_return(None);
         }
-        // TODO: Prevent to emit after the return statement.
+
         Ok(())
     }
 
