@@ -1,4 +1,4 @@
-use inkwell::types::BasicMetadataTypeEnum;
+use inkwell::types::{BasicMetadataTypeEnum, BasicTypeEnum};
 use inkwell::values::BasicValue;
 use inkwell::IntPredicate;
 use rustpython_parser::ast;
@@ -14,15 +14,6 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
     pub fn emit_stmts(&mut self, stmts: &[ast::Stmt]) -> Result<(), CodeGenError> {
         for stmt in stmts {
             self.emit_stmt(stmt)?;
-            match &stmt.node {
-                ast::StmtKind::Return { .. } => {
-                    // Break out of the loop if returned
-                    break;
-                }
-                _ => {
-                    // continue
-                }
-            }
         }
 
         Ok(())
@@ -252,6 +243,31 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
         // Emit statements.
         self.emit_stmts(statements)?;
+        // Emit return if not returned.
+        match statements.last().unwrap().node {
+            ast::StmtKind::Return { .. } => {
+                // Do nothing if returned
+            }
+            _ => {
+                if let Some(return_type) = function_type.get_return_type() {
+                    match return_type {
+                        BasicTypeEnum::IntType(_) => {
+                            let const_int_zero = self.context.i32_type().const_zero();
+                            self.builder.build_return(Some(&const_int_zero));
+                        }
+                        BasicTypeEnum::FloatType(_) => {
+                            let const_float_zero = self.context.f32_type().const_zero();
+                            self.builder.build_return(Some(&const_float_zero));
+                        }
+                        _=>return Err(CodeGenError::CompileError(
+                            "Unsupported default return type".to_string(),
+                        ))
+                    }
+                } else {
+                    self.builder.build_return(None);
+                }
+            }
+        }
 
         // Pop the current namespace.
         self.symbol_tables.pop_namespace();
