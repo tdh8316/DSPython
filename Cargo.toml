@@ -3,7 +3,7 @@ name = "dspython"
 version = "0.1.0"
 edition = "2021"
 authors = ["Donghyeok Tak <tdh8316@naver.com>"]
-description = "Damn small Python compiler"
+description = "DSPython is a damn small Python compiler designed to be used in small places for educational purposes."
 license = "MIT"
 repository = "https://github.com/tdh8316/DSPython"
 
