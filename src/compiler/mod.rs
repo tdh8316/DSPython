@@ -1,3 +1,6 @@
+pub mod errors;
+pub mod object;
+
 use std::fs::{read_to_string, write};
 use std::process::exit;
 
@@ -9,6 +12,7 @@ use rustpython_parser::ast;
 use rustpython_parser::parser::parse_program;
 
 use crate::codegen::{CodeGen, CodeGenArgs};
+use crate::compiler::errors::CompilerError;
 
 pub struct Compiler {
     optimization_level: u32,
@@ -24,7 +28,7 @@ impl Compiler {
     }
 
     /// Compile the given file and return the generated file
-    pub fn compile_file(&self, source_path: &str) -> String {
+    pub fn compile_file(&self, source_path: &str) -> Result<String, CompilerError> {
         let source = read_to_string(source_path)
             .expect(format!("Failed to read file {}", source_path).as_str());
         let ast = parse_program(source.as_str())
@@ -43,7 +47,10 @@ impl Compiler {
             2 => OptimizationLevel::Default,
             3 => OptimizationLevel::Aggressive,
             _ => {
-                panic!("Invalid optimization level: {}", self.optimization_level);
+                return Err(CompilerError::LLVMError(format!(
+                    "Invalid optimization level: {}",
+                    self.optimization_level
+                )));
             }
         });
         pm_builder.set_size_level(self.size_level);
@@ -55,20 +62,20 @@ impl Compiler {
         let (_doc, statements) = split_doc(&ast);
         for statement in statements {
             if let Err(error) = codegen.emit_stmt(statement) {
-                // TODO: Verbose error message
-                eprintln!("{}", error);
-                eprintln!(
-                    "File: \"{}\", {}",
+                return Err(CompilerError::CodeGenError(format!(
+                    "{}\n File: \"{}\", {}",
+                    error,
                     source_path,
                     codegen.get_source_location()
-                );
-                exit(101);
+                )));
             }
         }
 
         if let Err(error) = module.verify() {
-            eprintln!("Module verify failed: {}", error);
-            exit(101);
+            return Err(CompilerError::LLVMError(format!(
+                "Failed to verify module: {}",
+                error.to_string()
+            )));
         }
 
         if self.optimization_level > 0 {
@@ -78,7 +85,7 @@ impl Compiler {
         let output_path = format!("{}.ll", source_path);
         write(output_path.as_str(), codegen.emit()).expect("Failed to write LLVM IR");
 
-        output_path
+        Ok(output_path)
     }
 }
 

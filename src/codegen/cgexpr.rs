@@ -107,10 +107,14 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         args: &Vec<ast::Expr>,
     ) -> Result<Value<'ctx>, CodeGenError> {
         let func_name = get_symbol_str_from_expr(func)?;
-        let func = self
-            .module
-            .get_function(&func_name)
-            .ok_or(CodeGenError::NameError(func_name.to_string()))?;
+        let func = if let Some(func) = self.module.get_function(&func_name) {
+            func
+        } else {
+            return Err(CodeGenError::NameError(format!(
+                "name '{}' is not defined",
+                func_name
+            )));
+        };
 
         let mut args_values: Vec<BasicMetadataValueEnum> = Vec::new();
 
@@ -484,7 +488,10 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 self.builder.build_load(symbol.value.get_pointer(), id),
             ))
         } else {
-            Err(CodeGenError::NameError(id.to_string()))
+            Err(CodeGenError::NameError(format!(
+                "name '{}' is not defined",
+                id
+            )))
         }
     }
 

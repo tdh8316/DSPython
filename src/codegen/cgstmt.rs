@@ -259,9 +259,11 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                             let const_float_zero = self.context.f32_type().const_zero();
                             self.builder.build_return(Some(&const_float_zero));
                         }
-                        _=>return Err(CodeGenError::CompileError(
-                            "Unsupported default return type".to_string(),
-                        ))
+                        _ => {
+                            return Err(CodeGenError::CompileError(
+                                "Unsupported default return type".to_string(),
+                            ))
+                        }
                     }
                 } else {
                     self.builder.build_return(None);
@@ -276,14 +278,46 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
     }
 
     fn emit_return(&mut self, value: &Option<Box<ast::Expr>>) -> Result<(), CodeGenError> {
+        let func = match self.module.get_last_function() {
+            Some(func) => func,
+            None => {
+                return Err(CodeGenError::SyntaxError(
+                    "'return' outside function".to_string(),
+                ));
+            }
+        };
         if let Some(value) = value {
             // Evaluate the expression if the return value is specified.
-            let value = self.emit_expr(value)?;
-            match &value.get_type() {
+            let return_value = self.emit_expr(value)?;
+            let return_type = return_value.get_type().to_basic_type(self.context);
+
+            if let Some(func_return_type) = func.get_type().get_return_type() {
+                if return_type != func_return_type {
+                    return Err(CodeGenError::TypeError(format!(
+                        "Return type '{:?}' does not match function type '{:?}'",
+                        return_type, func_return_type
+                    )));
+                }
+            } else {
+                return Err(CodeGenError::TypeError(format!(
+                    "Function {} has return type 'None' instead of '{:?}'",
+                    func.get_name().to_str().unwrap(),
+                    return_type
+                )));
+            }
+
+            match &return_value.get_type() {
                 ValueType::None => self.builder.build_return(None),
-                _ => self.builder.build_return(Some(&value.to_basic_value())),
+                _ => self.builder.build_return(Some(&return_value.to_basic_value())),
             };
         } else {
+            if let Some(return_type) = func.get_type().get_return_type() {
+                return Err(CodeGenError::TypeError(format!(
+                    "Function {} has return type '{:?}' instead of 'None'",
+                    func.get_name().to_str().unwrap(),
+                    return_type
+                )));
+            }
             // Return None if the return value is not specified.
             self.builder.build_return(None);
         }
@@ -322,10 +356,11 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
         // Type checker
         if value.get_type() != value_type {
-            return Err(CodeGenError::TypeError(
-                format!("{:?}", value_type),
-                format!("{:?}", value.get_type()),
-            ));
+            return Err(CodeGenError::TypeError(format!(
+                "Expected '{:?}', but found '{:?}'",
+                value_type,
+                value.get_type()
+            )));
         }
 
         self.builder.build_store(pointer, value.to_basic_value());

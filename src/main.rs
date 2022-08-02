@@ -5,7 +5,7 @@ use dspython::compiler::Compiler;
 #[derive(Parser)]
 #[clap(long_about = None)]
 struct Args {
-    file_name: String,
+    file_name: Option<String>,
 
     #[clap(
         short,
@@ -22,7 +22,15 @@ struct Args {
 fn main() {
     let args: Args = Args::parse();
 
-    let compiler = Compiler::new(args.opt_level, args.size_level);
-
-    let _output_path = compiler.compile_file(args.file_name.as_str());
+    if let Some(file_name) = args.file_name {
+        let compiler = Compiler::new(args.opt_level, args.size_level);
+        let _ir_path = match compiler.compile_file(file_name.as_str()) {
+            Ok(ir_path) => ir_path,
+            Err(err) => {
+                panic!("{}", err);
+            }
+        };
+    } else {
+        panic!("No input file");
+    }
 }
