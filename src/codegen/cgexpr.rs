@@ -6,6 +6,7 @@ use crate::codegen::errors::CodeGenError;
 use crate::codegen::symbol_table::SymbolValueTrait;
 use crate::codegen::value::{truncate_bigint_to_u64, Value, ValueType};
 use crate::codegen::CodeGen;
+use crate::compiler::mangler::get_mangled_func_name;
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
     pub fn emit_expr(&mut self, expr: &ast::Expr) -> Result<Value<'ctx>, CodeGenError> {
@@ -106,16 +107,6 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         func: &ast::Expr,
         args: &Vec<ast::Expr>,
     ) -> Result<Value<'ctx>, CodeGenError> {
-        let func_name = get_symbol_str_from_expr(func)?;
-        let func = if let Some(func) = self.module.get_function(&func_name) {
-            func
-        } else {
-            return Err(CodeGenError::NameError(format!(
-                "name '{}' is not defined",
-                func_name
-            )));
-        };
-
         let mut args_values: Vec<BasicMetadataValueEnum> = Vec::new();
 
         // Evaluate arguments.
@@ -123,6 +114,20 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             let value = self.emit_expr(arg_expr)?;
             args_values.push(BasicMetadataValueEnum::from(value.to_basic_value()));
         }
+
+        let func_name = get_symbol_str_from_expr(func)?;
+        let func = if let Some(func) = self.module.get_function(func_name.as_str()) {
+            func
+        } else {
+            if let Some(func) = self.module.get_function(get_mangled_func_name(func_name.as_str(), args_values.clone()).as_str()) {
+                func
+            } else {
+                return Err(CodeGenError::NameError(format!(
+                    "name '{}' is not defined",
+                    func_name
+                )));
+            }
+        };
 
         let call = self
             .builder

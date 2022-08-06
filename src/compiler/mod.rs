@@ -1,6 +1,7 @@
 pub mod errors;
 pub mod object;
 mod link;
+pub mod mangler;
 
 use std::fs::{read_to_string, write};
 use std::path::Path;
