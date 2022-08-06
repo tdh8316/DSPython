@@ -1,5 +1,7 @@
 use std::fmt;
 
+use inkwell::types::BasicTypeEnum;
+
 pub enum CodeGenError {
     CompileError(String),
     NameError(String),
@@ -20,4 +22,15 @@ impl fmt::Display for CodeGenError {
             CodeGenError::Unimplemented(msg) => write!(f, "Unimplemented: {}", msg),
         }
     }
+}
+
+pub fn get_type_str_from_basic_type(ty: BasicTypeEnum) -> String {
+    match ty {
+        BasicTypeEnum::ArrayType(_) => "array",
+        BasicTypeEnum::FloatType(_) => "float",
+        BasicTypeEnum::IntType(_) => "int",
+        BasicTypeEnum::PointerType(_) => "pointer",
+        BasicTypeEnum::StructType(_) => "struct",
+        BasicTypeEnum::VectorType(_) => "vector",
+    }.to_string()
 }

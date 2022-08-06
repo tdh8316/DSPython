@@ -4,7 +4,7 @@ use inkwell::IntPredicate;
 use rustpython_parser::ast;
 
 use crate::codegen::cgexpr::{get_symbol_str_from_expr, get_value_type_from_annotation};
-use crate::codegen::errors::CodeGenError;
+use crate::codegen::errors::{CodeGenError, get_type_str_from_basic_type};
 use crate::codegen::symbol_table::{Symbol, SymbolScope, SymbolValueTrait};
 use crate::codegen::value::{Value, ValueType};
 use crate::codegen::CodeGen;
@@ -294,15 +294,16 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             if let Some(func_return_type) = func.get_type().get_return_type() {
                 if return_type != func_return_type {
                     return Err(CodeGenError::TypeError(format!(
-                        "Return type '{:?}' does not match function type '{:?}'",
-                        return_type, func_return_type
+                        "Return type '{}' does not match function type '{}'",
+                        get_type_str_from_basic_type(return_type),
+                        get_type_str_from_basic_type(func_return_type),
                     )));
                 }
             } else {
                 return Err(CodeGenError::TypeError(format!(
-                    "Function {} has return type 'None' instead of '{:?}'",
+                    "Function {} has return type 'None' instead of '{}'",
                     func.get_name().to_str().unwrap(),
-                    return_type
+                    get_type_str_from_basic_type(return_type),
                 )));
             }
 
@@ -313,9 +314,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         } else {
             if let Some(return_type) = func.get_type().get_return_type() {
                 return Err(CodeGenError::TypeError(format!(
-                    "Function {} has return type '{:?}' instead of 'None'",
+                    "Function {} has return type '{}' instead of 'None'",
                     func.get_name().to_str().unwrap(),
-                    return_type
+                    get_type_str_from_basic_type(return_type),
                 )));
             }
             // Return None if the return value is not specified.
@@ -358,8 +359,8 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         if value.get_type() != value_type {
             return Err(CodeGenError::TypeError(format!(
                 "Expected '{:?}', but found '{:?}'",
-                value_type,
-                value.get_type()
+                get_type_str_from_basic_type(value_type.to_basic_type(self.context)),
+                get_type_str_from_basic_type(value.get_type().to_basic_type(self.context)),
             )));
         }
 
