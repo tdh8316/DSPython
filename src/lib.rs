@@ -1,3 +1,3 @@
+pub mod clang;
 pub mod codegen;
 pub mod compiler;
-pub mod clang;

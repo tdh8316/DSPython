@@ -1,6 +1,6 @@
 use std::env;
-use std::process::Command;
 use std::io::ErrorKind::NotFound;
+use std::process::Command;
 
 pub struct Clang {
     executable: String,
@@ -10,7 +10,8 @@ impl Clang {
     pub fn new() -> Self {
         let executable = if let NotFound = Command::new("clang").spawn().err().unwrap().kind() {
             if let NotFound = Command::new("./bin/clang").spawn().err().unwrap().kind() {
-                let pref = env::var("LLVM_SYS_130_PREFIX").expect("Failed to get an executable clang");
+                let pref =
+                    env::var("LLVM_SYS_130_PREFIX").expect("Failed to get an executable clang");
                 format!("{}/bin/clang", pref)
             } else {
                 "./bin/clang".to_string()

@@ -4,7 +4,7 @@ use inkwell::IntPredicate;
 use rustpython_parser::ast;
 
 use crate::codegen::cgexpr::{get_symbol_str_from_expr, get_value_type_from_annotation};
-use crate::codegen::errors::{CodeGenError, get_type_str_from_basic_type};
+use crate::codegen::errors::{get_type_str_from_basic_type, CodeGenError};
 use crate::codegen::symbol_table::{Symbol, SymbolScope, SymbolValueTrait};
 use crate::codegen::value::{Value, ValueType};
 use crate::codegen::CodeGen;
@@ -309,7 +309,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
             match &return_value.get_type() {
                 ValueType::None => self.builder.build_return(None),
-                _ => self.builder.build_return(Some(&return_value.to_basic_value())),
+                _ => self
+                    .builder
+                    .build_return(Some(&return_value.to_basic_value())),
             };
         } else {
             if let Some(return_type) = func.get_type().get_return_type() {

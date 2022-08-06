@@ -11,11 +11,11 @@ struct Args {
     file_name: Option<String>,
 
     #[clap(
-    short,
-    long,
-    value_parser,
-    default_value = "3",
-    help = "Optimization level"
+        short,
+        long,
+        value_parser,
+        default_value = "3",
+        help = "Optimization level"
     )]
     opt_level: u32,
     #[clap(short, long, value_parser, default_value = "2", help = "Size level")]
@@ -36,8 +36,14 @@ fn main() {
 
         // TODO: Add platform-specific compilation
         let clang = Clang::new();
-        clang.run(&[ir_path.as_str(), "-o", format!("{}.exe", ir_path).as_str()]).unwrap();
-        let out = Command::new(format!("{}.exe", ir_path).as_str()).spawn().unwrap().wait_with_output().unwrap();
+        clang
+            .run(&[ir_path.as_str(), "-o", format!("{}.exe", ir_path).as_str()])
+            .unwrap();
+        let out = Command::new(format!("{}.exe", ir_path).as_str())
+            .spawn()
+            .unwrap()
+            .wait_with_output()
+            .unwrap();
         println!("{}", String::from_utf8_lossy(&out.stdout));
     } else {
         panic!("No input file");

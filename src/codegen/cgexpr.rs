@@ -119,7 +119,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         let func = if let Some(func) = self.module.get_function(func_name.as_str()) {
             func
         } else {
-            if let Some(func) = self.module.get_function(get_mangled_func_name(func_name.as_str(), args_values.clone()).as_str()) {
+            if let Some(func) = self.module.get_function(
+                get_mangled_func_name(func_name.as_str(), args_values.clone()).as_str(),
+            ) {
                 func
             } else {
                 return Err(CodeGenError::NameError(format!(

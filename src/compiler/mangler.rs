@@ -10,7 +10,7 @@ pub fn get_mangled_func_name(name: &str, args_values: Vec<BasicMetadataValueEnum
             BasicMetadataValueEnum::IntValue(_) => "i",
             BasicMetadataValueEnum::FloatValue(_) => "f",
             BasicMetadataValueEnum::PointerValue(_) => "p",
-            _=>panic!("Unsupported type"),
+            _ => panic!("Unsupported type"),
         });
     }
 

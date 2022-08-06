@@ -32,5 +32,6 @@ pub fn get_type_str_from_basic_type(ty: BasicTypeEnum) -> String {
         BasicTypeEnum::PointerType(_) => "pointer",
         BasicTypeEnum::StructType(_) => "struct",
         BasicTypeEnum::VectorType(_) => "vector",
-    }.to_string()
+    }
+    .to_string()
 }
