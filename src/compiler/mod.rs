@@ -1,10 +1,12 @@
 pub mod errors;
 pub mod object;
+mod link;
 
 use std::fs::{read_to_string, write};
-use std::process::exit;
+use std::path::Path;
 
 use inkwell::context::Context;
+use inkwell::memory_buffer::MemoryBuffer;
 use inkwell::module::Module;
 use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::OptimizationLevel;
@@ -13,6 +15,7 @@ use rustpython_parser::parser::parse_program;
 
 use crate::codegen::{CodeGen, CodeGenArgs};
 use crate::compiler::errors::CompilerError;
+use crate::compiler::link::ModuleLinker;
 
 pub struct Compiler {
     optimization_level: u32,
@@ -56,6 +59,10 @@ impl Compiler {
         pm_builder.set_size_level(self.size_level);
         let pm: PassManager<Module> = PassManager::create(());
         pm_builder.populate_module_pass_manager(&pm);
+
+        // Include python standard core functions
+        let mut linker = ModuleLinker::new(&context, &module);
+        linker.include_core()?;
 
         let mut codegen = CodeGen::new(&context, &module, &builder, CodeGenArgs {});
 
