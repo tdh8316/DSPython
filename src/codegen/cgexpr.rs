@@ -512,7 +512,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             ast::Constant::Bool(bool) => Ok(Value::Bool {
                 value: self.context.bool_type().const_int(*bool as u64, false),
             }),
-            // ast::Constant::Str(_) => {}
+            ast::Constant::Str(value) => Ok(Value::Str {
+                value: self.builder.build_global_string_ptr(value, "str").as_pointer_value(),
+            }),
             // ast::Constant::Bytes(_) => {}
             ast::Constant::Int(value) => Ok(Value::I32 {
                 value: self
