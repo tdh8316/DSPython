@@ -83,6 +83,7 @@ impl ValueType {
         match ty {
             BasicTypeEnum::IntType { .. } => ValueType::I32,
             BasicTypeEnum::FloatType { .. } => ValueType::F32,
+            BasicTypeEnum::PointerType { .. } => ValueType::Str,
             _ => panic!("Invalid basic type: {:?}", ty),
         }
     }

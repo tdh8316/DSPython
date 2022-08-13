@@ -1,13 +1,13 @@
-use inkwell::IntPredicate;
 use inkwell::types::{BasicMetadataTypeEnum, BasicTypeEnum};
 use inkwell::values::BasicValue;
+use inkwell::IntPredicate;
 use rustpython_parser::ast;
 
 use crate::codegen::cgexpr::{get_symbol_str_from_expr, get_value_type_from_annotation};
-use crate::codegen::CodeGen;
-use crate::codegen::errors::{CodeGenError, get_type_str_from_basic_type};
+use crate::codegen::errors::{get_type_str_from_basic_type, CodeGenError};
 use crate::codegen::symbol_table::{Symbol, SymbolScope, SymbolValueTrait};
 use crate::codegen::value::{Value, ValueType};
+use crate::codegen::CodeGen;
 use crate::compiler::split_doc;
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
@@ -346,9 +346,10 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             // If the symbol does not exist
             // DSPython assume that the assignment statement without type hint is 'define'
             // Therefore, the type of the symbol is determined by the 'declaration' of the symbol.
-            return Err(CodeGenError::NameError(
-                format!("name '{}' is not defined", symbol_str),
-            ));
+            return Err(CodeGenError::NameError(format!(
+                "name '{}' is not defined",
+                symbol_str
+            )));
         };
 
         let value = self.emit_expr(value)?;
