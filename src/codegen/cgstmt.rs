@@ -1,13 +1,13 @@
+use inkwell::IntPredicate;
 use inkwell::types::{BasicMetadataTypeEnum, BasicTypeEnum};
 use inkwell::values::BasicValue;
-use inkwell::IntPredicate;
 use rustpython_parser::ast;
 
 use crate::codegen::cgexpr::{get_symbol_str_from_expr, get_value_type_from_annotation};
-use crate::codegen::errors::{get_type_str_from_basic_type, CodeGenError};
+use crate::codegen::CodeGen;
+use crate::codegen::errors::{CodeGenError, get_type_str_from_basic_type};
 use crate::codegen::symbol_table::{Symbol, SymbolScope, SymbolValueTrait};
 use crate::codegen::value::{Value, ValueType};
-use crate::codegen::CodeGen;
 use crate::compiler::split_doc;
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
@@ -27,11 +27,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 self.emit_expr(value)?;
                 Ok(())
             }
-
-            // DSPython requires type annotation for variable declaration.
-            Assign { .. } => Err(CodeGenError::CompileError(
-                "Must have type hint".to_string(),
-            )),
+            Assign { targets, value, .. } => self.emit_assign(targets, value),
             AnnAssign {
                 target,
                 annotation,
@@ -262,7 +258,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                         _ => {
                             return Err(CodeGenError::CompileError(
                                 "Unsupported default return type".to_string(),
-                            ))
+                            ));
                         }
                     }
                 } else {
@@ -328,6 +324,48 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         Ok(())
     }
 
+    fn emit_assign(
+        &mut self,
+        targets: &Vec<ast::Expr>,
+        value: &Box<ast::Expr>,
+    ) -> Result<(), CodeGenError> {
+        // TODO: Variable unpacking
+        if targets.len() > 1 {
+            return Err(CodeGenError::Unimplemented(
+                "Variable unpacking is not supported yet".to_string(),
+            ));
+        }
+
+        let target = targets.first().unwrap();
+        let symbol_str = get_symbol_str_from_expr(target)?;
+        let maybe_symbol = self.symbol_tables.context().get_symbol(symbol_str.as_str());
+        let (pointer, target_type) = if let Some(symbol) = maybe_symbol {
+            // If the symbol already exists, load it from the symbol table and assign the value.
+            (symbol.value.get_pointer(), symbol.value.get_type())
+        } else {
+            // If the symbol does not exist
+            // DSPython assume that the assignment statement without type hint is 'define'
+            // Therefore, the type of the symbol is determined by the 'declaration' of the symbol.
+            return Err(CodeGenError::NameError(
+                format!("name '{}' is not defined", symbol_str),
+            ));
+        };
+
+        let value = self.emit_expr(value)?;
+        let value_type = value.get_type();
+        if target_type != value_type {
+            return Err(CodeGenError::TypeError(format!(
+                "Expected '{}', but found '{}'",
+                get_type_str_from_basic_type(target_type.to_basic_type(self.context)),
+                get_type_str_from_basic_type(value_type.to_basic_type(self.context)),
+            )));
+        }
+
+        self.builder.build_store(pointer, value.to_basic_value());
+
+        Ok(())
+    }
+
     fn emit_ann_assign(
         &mut self,
         target: &Box<ast::Expr>,
@@ -360,7 +398,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         // Type checker
         if value.get_type() != value_type {
             return Err(CodeGenError::TypeError(format!(
-                "Expected '{:?}', but found '{:?}'",
+                "Expected '{}', but found '{}'",
                 get_type_str_from_basic_type(value_type.to_basic_type(self.context)),
                 get_type_str_from_basic_type(value.get_type().to_basic_type(self.context)),
             )));
