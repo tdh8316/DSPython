@@ -80,7 +80,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                         return Err(CodeGenError::Unimplemented(format!(
                             "{:?} for i32 and i32 is not implemented",
                             ops[0]
-                        )))
+                        )));
                     }
                 };
                 self.builder.build_int_compare(
@@ -119,6 +119,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         let func = if let Some(func) = self.module.get_function(func_name.as_str()) {
             func
         } else {
+            // If the function is not found, mangle the name and try again.
             if let Some(func) = self.module.get_function(
                 get_mangled_func_name(func_name.as_str(), args_values.clone()).as_str(),
             ) {
@@ -130,6 +131,19 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 )));
             }
         };
+
+        // If the function has variadic arguments
+        if func.get_type().is_var_arg() {
+            // Add the number of arguments to the start of the argument list.
+            args_values.insert(
+                0,
+                BasicMetadataValueEnum::from(
+                    self.context
+                        .i32_type()
+                        .const_int(args_values.len() as u64, true),
+                ),
+            );
+        }
 
         let call = self
             .builder

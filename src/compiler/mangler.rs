@@ -12,6 +12,7 @@ pub fn get_mangled_func_name(name: &str, args_values: Vec<BasicMetadataValueEnum
             BasicMetadataValueEnum::PointerValue(_) => "p",
             _ => panic!("Unsupported type"),
         });
+        break;
     }
 
     if args_values.len() == 0 {

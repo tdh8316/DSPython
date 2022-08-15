@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdarg.h>
 
 static char inputBuffer[0xFF + 1];
 
@@ -17,9 +18,17 @@ void print_f(float value)
     printf("%f\n", value);
 }
 
-void print_p(char *value)
+void print_p(int args, ...)
 {
-    printf("%s\n", value);
+    va_list ap;
+    va_start(ap, args);
+    for (int i = 0; i < args; ++i)
+    {
+        char *string = va_arg(ap, char *);
+        printf("%s ", string);
+    }
+    va_end(ap);
+    printf("\n");
 }
 
 char *input_v(void)
