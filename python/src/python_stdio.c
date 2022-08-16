@@ -6,16 +6,19 @@ static char inputBuffer[0xFF + 1];
 void print_v(void)
 {
     printf("\n");
+    fflush(stdout);
 }
 
 void print_i(int value)
 {
     printf("%d\n", value);
+    fflush(stdout);
 }
 
 void print_f(float value)
 {
     printf("%f\n", value);
+    fflush(stdout);
 }
 
 void print_p(int args, ...)
@@ -29,6 +32,7 @@ void print_p(int args, ...)
     }
     va_end(ap);
     printf("\n");
+    fflush(stdout);
 }
 
 char *input_v(void)
