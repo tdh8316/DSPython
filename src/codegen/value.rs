@@ -5,6 +5,7 @@ use inkwell::values::{BasicValueEnum, FloatValue, IntValue, PointerValue};
 use num_bigint::{BigInt, BigUint};
 use num_traits::{Signed, ToPrimitive};
 
+#[derive(Debug, Clone)]
 pub enum Value<'ctx> {
     None,
     Bool { value: IntValue<'ctx> },

@@ -9,7 +9,8 @@ mod cgexpr;
 mod cgstmt;
 mod errors;
 mod symbol_table;
-mod value;
+pub(crate) mod value;
+mod vargs;
 
 pub struct CodeGenArgs {}
 

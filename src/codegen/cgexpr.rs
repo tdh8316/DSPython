@@ -5,6 +5,7 @@ use rustpython_parser::ast;
 use crate::codegen::errors::CodeGenError;
 use crate::codegen::symbol_table::SymbolValueTrait;
 use crate::codegen::value::{truncate_bigint_to_u64, Value, ValueType};
+use crate::codegen::vargs::get_vargs_types;
 use crate::codegen::CodeGen;
 use crate::compiler::mangler::get_mangled_func_name;
 
@@ -107,12 +108,11 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         func: &ast::Expr,
         args: &Vec<ast::Expr>,
     ) -> Result<Value<'ctx>, CodeGenError> {
-        let mut args_values: Vec<BasicMetadataValueEnum> = Vec::new();
+        let mut args_values: Vec<Value<'ctx>> = Vec::new();
 
         // Evaluate arguments.
         for arg_expr in args {
-            let value = self.emit_expr(arg_expr)?;
-            args_values.push(BasicMetadataValueEnum::from(value.to_basic_value()));
+            args_values.push(self.emit_expr(arg_expr)?);
         }
 
         let func_name = get_symbol_str_from_expr(func)?;
@@ -120,9 +120,10 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             func
         } else {
             // If the function is not found, mangle the name and try again.
-            if let Some(func) = self.module.get_function(
-                get_mangled_func_name(func_name.as_str(), args_values.clone()).as_str(),
-            ) {
+            if let Some(func) = self
+                .module
+                .get_function(get_mangled_func_name(func_name.as_str(), &args_values).as_str())
+            {
                 func
             } else {
                 return Err(CodeGenError::NameError(format!(
@@ -132,22 +133,28 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             }
         };
 
+        let mut args_basic_values: Vec<BasicMetadataValueEnum> = args_values
+            .clone()
+            .into_iter()
+            .map(|arg| BasicMetadataValueEnum::from(arg.to_basic_value()))
+            .collect::<Vec<BasicMetadataValueEnum>>();
+
         // If the function has variadic arguments
         if func.get_type().is_var_arg() {
-            // Add the number of arguments to the start of the argument list.
-            args_values.insert(
+            // Add the type of the variadic arguments to the argument list.
+            args_basic_values.insert(
                 0,
                 BasicMetadataValueEnum::from(
-                    self.context
-                        .i32_type()
-                        .const_int(args_values.len() as u64, true),
+                    self.builder
+                        .build_global_string_ptr(get_vargs_types(args_values).as_str(), "vargs")
+                        .as_pointer_value(),
                 ),
             );
         }
 
         let call = self
             .builder
-            .build_call(func, args_values.as_slice(), func_name.as_str());
+            .build_call(func, args_basic_values.as_slice(), func_name.as_str());
         call.set_tail_call(true);
 
         // Evaluate the return value of the function.

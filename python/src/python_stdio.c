@@ -3,32 +3,25 @@
 
 static char inputBuffer[0xFF + 1];
 
-void print_v(void)
+void print(const char *types, ...)
 {
-    printf("\n");
-    fflush(stdout);
-}
-
-void print_i(int value)
-{
-    printf("%d\n", value);
-    fflush(stdout);
-}
-
-void print_f(float value)
-{
-    printf("%f\n", value);
-    fflush(stdout);
-}
-
-void print_p(int args, ...)
-{
+    const int args = sizeof(types);
     va_list ap;
-    va_start(ap, args);
-    for (int i = 0; i < args; ++i)
+    va_start(ap, types);
+    while (*types != '\0')
     {
-        char *string = va_arg(ap, char *);
-        printf("%s ", string);
+        switch (*types++)
+        {
+        case 's':
+            printf("%s ", va_arg(ap, const char *));
+            break;
+        case 'i':
+            printf("%d ", va_arg(ap, const int));
+            break;
+        case 'f':
+            printf("%f ", va_arg(ap, const double));
+            break;
+        }
     }
     va_end(ap);
     printf("\n");
@@ -46,7 +39,7 @@ char *input_v(void)
     return inputBuffer;
 }
 
-char *input_p(char *value)
+char *input_s(char *value)
 {
     printf("%s", value);
     fflush(stdout);

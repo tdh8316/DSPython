@@ -1,17 +1,17 @@
-use inkwell::values::BasicMetadataValueEnum;
+use crate::codegen::value::{Value, ValueType};
 
-pub fn get_mangled_func_name(name: &str, args_values: Vec<BasicMetadataValueEnum>) -> String {
+pub fn get_mangled_func_name(name: &str, args_values: &Vec<Value>) -> String {
     let mut mangled_name = name.to_string();
     mangled_name.push_str("_");
 
-    for arg in &args_values {
-        mangled_name.push_str(match arg {
-            BasicMetadataValueEnum::ArrayValue(_) => "a",
-            BasicMetadataValueEnum::IntValue(_) => "i",
-            BasicMetadataValueEnum::FloatValue(_) => "f",
-            BasicMetadataValueEnum::PointerValue(_) => "p",
+    for arg in args_values {
+        mangled_name.push_str(match arg.get_type() {
+            ValueType::I32 => "i",
+            ValueType::F32 => "f",
+            ValueType::Str => "s",
             _ => panic!("Unsupported type"),
         });
+        // Only the first argument is used for the mangled name
         break;
     }
 
