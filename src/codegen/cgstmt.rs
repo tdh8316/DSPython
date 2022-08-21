@@ -1,12 +1,11 @@
 use inkwell::types::{BasicMetadataTypeEnum, BasicTypeEnum};
 use inkwell::values::BasicValue;
-use inkwell::IntPredicate;
 use rustpython_parser::ast;
 
 use crate::codegen::cgexpr::{get_symbol_str_from_expr, get_value_type_from_annotation};
 use crate::codegen::errors::{get_type_str_from_basic_type, CodeGenError};
 use crate::codegen::symbol_table::{Symbol, SymbolScope, SymbolValueTrait};
-use crate::codegen::value::{Value, ValueType};
+use crate::codegen::value::{value_to_condition, ValueType};
 use crate::codegen::CodeGen;
 use crate::compiler::split_doc;
 
@@ -44,9 +43,43 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             } => self.emit_function_def(name, args, body, decorator_list, returns, type_comment),
             If { test, body, orelse } => self.emit_if(test, body, orelse),
             Return { value } => self.emit_return(value),
+            While { test, body, orelse } => self.emit_while(test, body, orelse),
 
             _ => Err(CodeGenError::Unimplemented(format!("stmt: {:#?}", stmt))),
         }
+    }
+
+    fn emit_while(
+        &mut self,
+        test: &Box<ast::Expr>,
+        body: &Vec<ast::Stmt>,
+        orelse: &Vec<ast::Stmt>,
+    ) -> Result<(), CodeGenError> {
+        let parent = self.module.get_last_function().unwrap();
+
+        let while_block = self.context.append_basic_block(parent, "while");
+        let loop_block = self.context.append_basic_block(parent, "while.body");
+        let else_block = self.context.append_basic_block(parent, "while.else");
+        let end_block = self.context.append_basic_block(parent, "while.end");
+
+        // Jump to the while block
+        self.builder.build_unconditional_branch(while_block);
+        self.builder.position_at_end(while_block);
+
+        let condition = value_to_condition(self.emit_expr(test)?, self.context, self.builder)?;
+        self.builder
+            .build_conditional_branch(condition, loop_block, else_block);
+
+        self.builder.position_at_end(loop_block);
+        self.emit_stmts(body)?;
+        self.builder.build_unconditional_branch(while_block);
+
+        self.builder.position_at_end(else_block);
+        self.emit_stmts(orelse)?;
+        self.builder.build_unconditional_branch(end_block);
+
+        self.builder.position_at_end(end_block);
+        Ok(())
     }
 
     fn emit_if(
@@ -61,25 +94,11 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         let else_block = self.context.append_basic_block(parent, "if.else");
         let end_block = self.context.append_basic_block(parent, "if.end");
 
-        let comparison = match self.emit_expr(test)? {
-            Value::None => self.context.bool_type().const_int(0, false),
-            Value::Bool { value } => value,
-            Value::I32 { value } => self.builder.build_int_compare(
-                IntPredicate::SGT,
-                value,
-                self.context.i32_type().const_zero(),
-                "if.cmp",
-            ),
-            _ => {
-                return Err(CodeGenError::CompileError(
-                    "Cannot make comparison".to_string(),
-                ));
-            }
-        };
+        let condition = value_to_condition(self.emit_expr(test)?, self.context, self.builder)?;
 
         // Build the conditional branch instruction
         self.builder
-            .build_conditional_branch(comparison, then_block, else_block);
+            .build_conditional_branch(condition, then_block, else_block);
 
         // Emit at if.then block
         self.builder.position_at_end(then_block);

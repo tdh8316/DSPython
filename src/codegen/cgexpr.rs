@@ -146,7 +146,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 0,
                 BasicMetadataValueEnum::from(
                     self.builder
-                        .build_global_string_ptr(get_vargs_types(args_values).as_str(), "vargs")
+                        .build_global_string_ptr(get_vargs_types(args_values).as_str(), "t_vargs")
                         .as_pointer_value(),
                 ),
             );

@@ -1,5 +1,9 @@
+use inkwell::builder::Builder;
+use inkwell::context::Context;
+use inkwell::IntPredicate;
 use std::borrow::Borrow;
 
+use crate::codegen::errors::CodeGenError;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::{BasicValueEnum, FloatValue, IntValue, PointerValue};
 use num_bigint::{BigInt, BigUint};
@@ -117,4 +121,26 @@ pub fn truncate_bigint_to_u64(a: &BigInt) -> u64 {
     } else {
         truncated
     }
+}
+
+pub fn value_to_condition<'ctx>(
+    value: Value<'ctx>,
+    context: &'ctx Context,
+    builder: &Builder<'ctx>,
+) -> Result<IntValue<'ctx>, CodeGenError> {
+    return match value {
+        Value::None => Ok(context.bool_type().const_int(0, false)),
+        Value::Bool { value } => Ok(value),
+        Value::I32 { value } => Ok(builder.build_int_compare(
+            IntPredicate::SGT,
+            value,
+            context.i32_type().const_zero(),
+            "if.cmp",
+        )),
+        _ => {
+            return Err(CodeGenError::CompileError(
+                "Cannot make comparison".to_string(),
+            ));
+        }
+    };
 }
