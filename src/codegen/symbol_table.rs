@@ -103,6 +103,7 @@ impl<'ctx> SymbolValueTrait<'ctx> for SymbolValue<'ctx> {
 pub struct Symbol<'ctx> {
     pub name: String,
     pub value: SymbolValue<'ctx>,
+    #[allow(unused)]
     scope: SymbolScope,
 }
 
@@ -111,6 +112,7 @@ impl<'ctx> Symbol<'ctx> {
         Self { name, value, scope }
     }
 
+    #[allow(unused)]
     pub fn is_global(&self) -> bool {
         self.scope == SymbolScope::Global
     }

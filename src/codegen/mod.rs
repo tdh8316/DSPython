@@ -20,8 +20,10 @@ pub struct CodeGen<'a, 'ctx> {
     module: &'a Module<'ctx>,
     builder: &'a Builder<'ctx>,
     symbol_tables: SymbolTables<'ctx>,
+    #[allow(unused)]
     global_symbol_table: SymbolTable<'ctx>,
     current_source_location: ast::Location,
+    #[allow(unused)]
     args: CodeGenArgs,
 }
 

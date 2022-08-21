@@ -4,10 +4,9 @@ pub mod mangler;
 pub mod object;
 
 use std::fs::{read_to_string, write};
-use std::path::Path;
 
 use inkwell::context::Context;
-use inkwell::memory_buffer::MemoryBuffer;
+
 use inkwell::module::Module;
 use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::OptimizationLevel;
