@@ -17,7 +17,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             Constant { value, kind } => self.emit_constant(value, kind),
             Name { id, .. } => self.emit_name(id),
             BinOp { left, op, right } => self.emit_bin_op(left, op, right),
-            Call { func, args, .. } => self.emit_call(func, args),
+            Call { func, args, keywords} => self.emit_call(func, args, keywords),
             Compare {
                 left,
                 ops,
@@ -107,6 +107,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         &mut self,
         func: &ast::Expr,
         args: &Vec<ast::Expr>,
+        _keywords: &Vec<ast::Keyword>,
     ) -> Result<Value<'ctx>, CodeGenError> {
         let mut args_values: Vec<Value<'ctx>> = Vec::new();
 
